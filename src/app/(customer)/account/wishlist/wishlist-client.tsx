@@ -15,7 +15,7 @@ type WishlistItemWithBook = {
     author: string;
     slug: string;
     price: number;
-    stock: number;
+    isSold: boolean;
     images: string[];
     qualityGrade: string;
   } | null;
@@ -76,7 +76,7 @@ export function WishlistClient({ items: initialItems }: Props) {
             if (!item.book) return null;
             const book = item.book;
             const cover = book.images?.[0];
-            const inStock = book.stock > 0;
+            const inStock = !book.isSold;
 
             return (
               <div

@@ -93,60 +93,60 @@ async function seed() {
     fantasy:    allGenres.find(g => g.slug === "fantasy")!,
   };
 
-  // ── Users — always upsert admin with required credentials ──────────────────
+  // ── Users ──────────────────────────────────────────────────────────────────
   console.log("  👤 Upserting users...");
 
-  // Hash the required admin password
-  const requiredAdminPassword = await hashPassword("Amir09016828270");
-  const fallbackAdminPassword = await hashPassword("Admin123!");
-  const userPassword = await hashPassword("User1234!");
+  // Admin credentials must be set via env — no hardcoded defaults in production.
+  const adminEmail    = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
 
-  // Primary admin — upsert by email (update password + role even if exists)
+  if (!adminEmail || !adminPassword) {
+    throw new Error(
+      "ADMIN_EMAIL and ADMIN_PASSWORD must be set in .env before running seed.\n" +
+      "Example:\n  ADMIN_EMAIL=you@example.com\n  ADMIN_PASSWORD=your-strong-password"
+    );
+  }
+
+  if (adminPassword.length < 12) {
+    throw new Error("ADMIN_PASSWORD must be at least 12 characters.");
+  }
+
+  const hashedAdmin   = await hashPassword(adminPassword);
+  const userPassword  = await hashPassword("User1234!");
+
+  // Upsert admin — update password + role if user already exists
   await db
     .insert(schema.users)
     .values({
-      name: "امیرحسین ورمانلی",
-      email: "varmanliamirhosein@gmail.com",
-      password: requiredAdminPassword,
+      name: process.env.ADMIN_NAME ?? "مدیر سیستم",
+      email: adminEmail.toLowerCase().trim(),
+      password: hashedAdmin,
       role: "ADMIN",
       emailVerified: new Date(),
     })
     .onConflictDoUpdate({
       target: schema.users.email,
       set: {
-        password: requiredAdminPassword,
+        password: hashedAdmin,
         role: "ADMIN",
         emailVerified: new Date(),
       },
     });
 
-  // Fallback admin
-  await db
-    .insert(schema.users)
-    .values({
-      name: "مدیر سیستم",
-      email: "admin@bookshop.com",
-      password: fallbackAdminPassword,
-      role: "ADMIN",
-      emailVerified: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: schema.users.email,
-      set: { password: fallbackAdminPassword, role: "ADMIN" },
-    });
+  // Sample non-admin users (for dev/testing only — skip in prod if desired)
+  if (process.env.NODE_ENV !== "production") {
+    await db
+      .insert(schema.users)
+      .values([
+        { name: "علی احمدی",   email: "ali@example.com",    password: userPassword, role: "USER", emailVerified: new Date() },
+        { name: "مریم رضایی", email: "maryam@example.com", password: userPassword, role: "USER", emailVerified: new Date() },
+      ])
+      .onConflictDoNothing();
+  }
 
-  // Regular test users
-  await db
-    .insert(schema.users)
-    .values([
-      { name: "علی احمدی", email: "ali@example.com", password: userPassword, role: "USER", emailVerified: new Date() },
-      { name: "مریم رضایی", email: "maryam@example.com", password: userPassword, role: "USER", emailVerified: new Date() },
-    ])
-    .onConflictDoNothing();
-
-  // Fetch admin for foreign-key references
+  // Fetch admin for foreign-key references in later inserts
   const admin = await db.query.users.findFirst({
-    where: eq(schema.users.email, "varmanliamirhosein@gmail.com"),
+    where: eq(schema.users.email, adminEmail.toLowerCase().trim()),
   });
   if (!admin) throw new Error("Admin user not found after upsert");
   console.log(`     ✓ Admin: ${admin.email} (role: ${admin.role})`);

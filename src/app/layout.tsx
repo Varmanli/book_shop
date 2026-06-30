@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import { siteConfig } from "@/config/site";
 import { Toaster } from "sonner";
+import { CartProvider } from "@/components/cart/cart-context";
 
 export const metadata: Metadata = {
   title: {
@@ -20,7 +22,11 @@ export default function RootLayout({
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans antialiased">
-        {children}
+        <Suspense>
+          <CartProvider>
+            {children}
+          </CartProvider>
+        </Suspense>
         <Toaster position="top-center" richColors dir="rtl" />
       </body>
     </html>

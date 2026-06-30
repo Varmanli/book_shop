@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { requireAdmin } from "@/lib/session";
-import { AdminSidebar } from "@/components/admin/admin-sidebar";
-import { AdminTopbar } from "@/components/admin/admin-topbar";
+import { AdminShell } from "@/components/admin/admin-shell";
 
 async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireAdmin();
@@ -12,15 +11,7 @@ async function AdminLayout({ children }: { children: React.ReactNode }) {
     image: session.user.image ?? null,
   };
 
-  return (
-    <div className="flex min-h-screen bg-muted/20">
-      <AdminSidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <AdminTopbar user={user} />
-        <main className="flex-1 p-6">{children}</main>
-      </div>
-    </div>
-  );
+  return <AdminShell user={user}>{children}</AdminShell>;
 }
 
 export default function AdminRootLayout({ children }: { children: React.ReactNode }) {

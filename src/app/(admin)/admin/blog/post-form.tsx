@@ -1,10 +1,12 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { ApiResponse } from "@/types/api";
 import type { Post } from "@/types";
+import { ImageUploader, type UploadedFile } from "@/components/ui/image-uploader";
+import { RichTextEditor } from "@/components/admin/rich-text-editor";
 
 const POST_CATEGORIES = [
   "عمومی", "ادبیات", "داستان", "علمی", "تاریخی", "فلسفی", "معرفی کتاب", "نقد و بررسی",
@@ -20,6 +22,12 @@ type State = ApiResponse<Post> | { success: false; error: "" };
 export function PostForm({ post, action }: Props) {
   const router = useRouter();
   const [state, dispatch, pending] = useActionState(action, { success: false, error: "" } as State);
+  const [coverImage, setCoverImage] = useState<UploadedFile | null>(
+    post?.coverImage ? { url: post.coverImage } : null
+  );
+  const [content, setContent] = useState(post?.content ?? "");
+  const [previewMode, setPreviewMode] = useState(false);
+  const [slug, setSlug] = useState(post?.slug ?? "");
 
   useEffect(() => {
     if (state.success) {
@@ -40,6 +48,10 @@ export function PostForm({ post, action }: Props) {
 
   return (
     <form action={dispatch} className="grid gap-6 lg:grid-cols-3">
+      {/* Hidden controlled values */}
+      <input type="hidden" name="content" value={content} />
+      <input type="hidden" name="slug" value={slug} />
+
       {/* Main content */}
       <div className="space-y-5 lg:col-span-2">
         <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -55,8 +67,26 @@ export function PostForm({ post, action }: Props) {
                 required
                 defaultValue={post?.title}
                 className={inputCls(fe.title?.[0])}
+                placeholder="عنوان مقاله را وارد کنید"
               />
               {fe.title && <p className="text-xs text-destructive">{fe.title[0]}</p>}
+            </div>
+
+            {/* Slug field */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-foreground">اسلاگ</label>
+              <input
+                type="text"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder="چرا-دوباره-باید-کتاب-کاغذی-بخوانیم"
+                dir="ltr"
+                className={inputCls(fe.slug?.[0])}
+              />
+              <p className="text-xs text-muted-foreground">
+                اگر خالی بماند، اسلاگ به‌صورت خودکار از عنوان ساخته می‌شود.
+              </p>
+              {fe.slug && <p className="text-xs text-destructive">{fe.slug[0]}</p>}
             </div>
 
             <div className="space-y-1.5">
@@ -68,25 +98,62 @@ export function PostForm({ post, action }: Props) {
                 required
                 rows={2}
                 defaultValue={post?.excerpt}
-                placeholder="خلاصه کوتاه پست (۲۰ تا ۳۰۰ کاراکتر)"
+                placeholder="خلاصه کوتاه مقاله (۲۰ تا ۳۰۰ کاراکتر)"
                 className={`${inputCls(fe.excerpt?.[0])} resize-none`}
               />
               {fe.excerpt && <p className="text-xs text-destructive">{fe.excerpt[0]}</p>}
             </div>
 
+            {/* Rich Text Editor */}
             <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-foreground">
-                محتوا <span className="text-destructive">*</span>
-              </label>
-              <textarea
-                name="content"
-                required
-                rows={12}
-                defaultValue={post?.content}
-                placeholder="محتوای کامل پست..."
-                className={`${inputCls(fe.content?.[0])} resize-y font-mono`}
-              />
-              {fe.content && <p className="text-xs text-destructive">{fe.content[0]}</p>}
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-semibold text-foreground">
+                  محتوا <span className="text-destructive">*</span>
+                </label>
+                <div className="flex rounded-lg border border-border overflow-hidden text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewMode(false)}
+                    className={`px-3 py-1 transition-colors ${!previewMode ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                  >
+                    ویرایش
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewMode(true)}
+                    className={`px-3 py-1 transition-colors ${previewMode ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                  >
+                    پیش‌نمایش
+                  </button>
+                </div>
+              </div>
+
+              {previewMode ? (
+                <div
+                  className="min-h-[320px] rounded-2xl border border-border bg-background px-4 py-4"
+                  dir="rtl"
+                >
+                  {content ? (
+                    <div
+                      className="prose prose-sm max-w-none rtl"
+                      dangerouslySetInnerHTML={{ __html: content }}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">محتوایی برای پیش‌نمایش وجود ندارد.</p>
+                  )}
+                </div>
+              ) : (
+                <RichTextEditor
+                  value={post?.content}
+                  onChange={setContent}
+                  error={fe.content?.[0]}
+                  minHeight={320}
+                />
+              )}
+
+              {fe.content && !previewMode && (
+                <p className="text-xs text-destructive">{fe.content[0]}</p>
+              )}
             </div>
           </div>
         </section>
@@ -124,16 +191,14 @@ export function PostForm({ post, action }: Props) {
 
         <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <h2 className="mb-4 text-sm font-bold text-foreground">تصویر شاخص</h2>
-          <div className="space-y-1.5">
-            <input
-              type="url"
-              name="coverImage"
-              defaultValue={post?.coverImage ?? ""}
-              placeholder="https://..."
-              dir="ltr"
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary/60 focus:outline-none"
-            />
-          </div>
+          <input type="hidden" name="coverImage" value={coverImage?.url ?? ""} />
+          <ImageUploader
+            context="blog"
+            aspectRatio="banner"
+            value={coverImage}
+            onChange={setCoverImage}
+            maxSizeMB={5}
+          />
         </section>
 
         <div className="space-y-2">

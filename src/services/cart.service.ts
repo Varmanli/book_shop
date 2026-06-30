@@ -1,48 +1,46 @@
 import * as cartRepo from "@/repositories/cart.repository";
 import * as bookRepo from "@/repositories/book.repository";
-import { siteConfig } from "@/config/site";
+import { getShippingSettings } from "@/repositories/settings.repository";
 
 type CartOwner =
   | { userId: string; sessionId?: never }
   | { sessionId: string; userId?: never };
 
 export async function getCart(owner: CartOwner) {
-  const items = await cartRepo.findCartItems(owner);
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.book.price * item.quantity,
-    0
-  );
+  const [items, { shippingCost: baseShipping, freeShippingThreshold }] =
+    await Promise.all([
+      cartRepo.findCartItems(owner),
+      getShippingSettings(),
+    ]);
+
+  const subtotal = items.reduce((sum, item) => sum + item.book.price, 0);
+
+  // Free-shipping threshold is optional and admin-controlled.
+  // When not configured (null) shipping always applies.
   const shippingCost =
-    subtotal >= siteConfig.shipping.freeShippingThreshold
+    freeShippingThreshold !== null && subtotal >= freeShippingThreshold
       ? 0
-      : siteConfig.shipping.defaultShippingCost;
+      : baseShipping;
+
   const total = subtotal + shippingCost;
 
-  return { items, subtotal, shippingCost, total, itemCount: items.length };
+  return {
+    items,
+    subtotal,
+    baseShippingCost: baseShipping,
+    shippingCost,
+    freeShippingThreshold,
+    total,
+    itemCount: items.length,
+  };
 }
 
-export async function addToCart(
-  owner: CartOwner,
-  bookId: string,
-  quantity: number = 1
-) {
+export async function addToCart(owner: CartOwner, bookId: string) {
   const book = await bookRepo.findBookById(bookId);
   if (!book || !book.isPublished) throw new Error("کتاب یافت نشد");
-  if (book.stock < quantity) throw new Error("موجودی کافی نیست");
+  if (book.isSold) throw new Error("این کتاب قبلاً فروخته شده است");
 
-  return cartRepo.addCartItem(owner, bookId, quantity);
-}
-
-export async function updateCartItem(
-  owner: CartOwner,
-  itemId: string,
-  quantity: number
-) {
-  if (quantity <= 0) {
-    await cartRepo.removeCartItem(itemId);
-    return null;
-  }
-  return cartRepo.updateCartItemQuantity(itemId, quantity);
+  return cartRepo.addCartItem(owner, bookId);
 }
 
 export async function removeFromCart(itemId: string) {

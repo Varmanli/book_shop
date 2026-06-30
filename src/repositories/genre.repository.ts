@@ -24,11 +24,12 @@ export async function findGenresWithCount() {
       id: genres.id,
       name: genres.name,
       slug: genres.slug,
+      image: genres.image,
       bookCount: count(bookGenres.bookId),
     })
     .from(genres)
     .leftJoin(bookGenres, eq(bookGenres.genreId, genres.id))
-    .groupBy(genres.id, genres.name, genres.slug)
+    .groupBy(genres.id, genres.name, genres.slug, genres.image)
     .orderBy(genres.name);
 }
 

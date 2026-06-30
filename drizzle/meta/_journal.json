@@ -15,6 +15,20 @@
       "when": 1781018102677,
       "tag": "0001_lean_luckman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782599883087,
+      "tag": "0002_ordinary_killmonger",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782645926925,
+      "tag": "0003_futuristic_terror",
+      "breakpoints": true
     }
   ]
 }

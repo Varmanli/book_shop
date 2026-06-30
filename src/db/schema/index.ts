@@ -13,3 +13,5 @@ export * from "./newsletter";
 export * from "./team";
 export * from "./home-slides";
 export * from "./reviews";
+export * from "./coupons";
+export * from "./transactions";

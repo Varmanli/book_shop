@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { db } from "@/db";
 import { books, orders, users } from "@/db/schema";
-import { count, eq, sum, lte } from "drizzle-orm";
+import { count, eq, sum } from "drizzle-orm";
 import { findAllOrders } from "@/repositories/order.repository";
 
 export const metadata: Metadata = { title: "داشبورد مدیریت" };
@@ -34,10 +34,10 @@ async function DashboardContent() {
     db.select({ revenue: sum(orders.total) }).from(orders).where(eq(orders.status, "DELIVERED")),
     findAllOrders({}, { pageSize: 8 }),
     db.query.books.findMany({
-      where: lte(books.stock, 5),
-      orderBy: (b, { asc }) => asc(b.stock),
+      where: eq(books.isSold, true),
+      orderBy: (b, { desc: d }) => d(b.updatedAt),
       limit: 5,
-      columns: { id: true, title: true, stock: true, slug: true },
+      columns: { id: true, title: true, isSold: true, slug: true },
     }),
   ]);
 
@@ -199,12 +199,12 @@ async function DashboardContent() {
         {/* Low stock */}
         <div className="rounded-2xl border border-border bg-card shadow-sm">
           <div className="border-b border-border px-5 py-4">
-            <h2 className="font-bold text-foreground">موجودی کم</h2>
+            <h2 className="font-bold text-foreground">اخیراً فروخته شده</h2>
           </div>
           <ul className="divide-y divide-border">
             {lowStockBooks.length === 0 ? (
               <li className="px-5 py-8 text-center text-sm text-muted-foreground">
-                همه کتاب‌ها موجودی کافی دارند ✓
+                هنوز کتابی فروخته نشده است
               </li>
             ) : (
               lowStockBooks.map((book) => (
@@ -215,12 +215,8 @@ async function DashboardContent() {
                   >
                     {book.title}
                   </Link>
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                      book.stock === 0 ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"
-                    }`}
-                  >
-                    {book.stock === 0 ? "ناموجود" : `${book.stock} عدد`}
+                  <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-700">
+                    فروخته شده
                   </span>
                 </li>
               ))
@@ -232,10 +228,12 @@ async function DashboardContent() {
       {/* Quick links */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { href: "/admin/books/new", label: "کتاب جدید", icon: "📚" },
-          { href: "/admin/blog/new", label: "پست جدید", icon: "✍️" },
-          { href: "/admin/categories", label: "دسته‌بندی‌ها", icon: "🗂️" },
-          { href: "/admin/settings", label: "تنظیمات", icon: "⚙️" },
+          { href: "/admin/books/new",  label: "کتاب جدید",       icon: "📚" },
+          { href: "/admin/blog/new",   label: "پست جدید",         icon: "✍️" },
+          { href: "/admin/coupons",    label: "کدهای تخفیف",     icon: "🏷️" },
+          { href: "/admin/finance",    label: "داشبورد مالی",    icon: "📊" },
+          { href: "/admin/categories", label: "دسته‌بندی‌ها",     icon: "🗂️" },
+          { href: "/admin/settings",   label: "تنظیمات",          icon: "⚙️" },
         ].map((link) => (
           <Link
             key={link.href}

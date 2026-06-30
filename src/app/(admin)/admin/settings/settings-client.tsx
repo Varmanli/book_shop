@@ -1,8 +1,10 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Truck, Info } from "lucide-react";
 import { updateSettingsAction } from "@/actions/settings.actions";
+import { ImageUploader, type UploadedFile } from "@/components/ui/image-uploader";
 
 interface Props {
   settings: Record<string, unknown>;
@@ -49,6 +51,14 @@ export function AdminSettingsClient({ settings }: Props) {
   }, [state]);
 
   const social = (settings.socialLinks as { instagram?: string; telegram?: string; twitter?: string } | null) ?? {};
+  const [logo, setLogo] = useState<UploadedFile | null>(
+    settings.logo ? { url: settings.logo as string } : null
+  );
+
+  const storedThreshold = settings.freeShippingThreshold;
+  const [thresholdEnabled, setThresholdEnabled] = useState(
+    storedThreshold !== null && storedThreshold !== undefined
+  );
 
   return (
     <form action={dispatch} className="space-y-6">
@@ -68,13 +78,14 @@ export function AdminSettingsClient({ settings }: Props) {
               defaultValue={settings.storeName as string}
               placeholder="کتاب‌فروشی"
             />
-            <InputField
-              label="لوگو (URL)"
-              name="logo"
-              type="url"
-              defaultValue={settings.logo as string}
-              dir="ltr"
-              placeholder="https://..."
+            <input type="hidden" name="logo" value={logo?.url ?? ""} />
+            <ImageUploader
+              label="لوگو"
+              context="logo"
+              aspectRatio="square"
+              value={logo}
+              onChange={setLogo}
+              maxSizeMB={2}
             />
           </div>
         </section>
@@ -153,6 +164,105 @@ export function AdminSettingsClient({ settings }: Props) {
           {/* Hidden field for serialized social links */}
         </section>
       </div>
+
+      {/* ── Shipping Settings ─────────────────────────────── */}
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+            <Truck size={18} className="text-primary" />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-foreground">تنظیمات ارسال</h2>
+            <p className="text-xs text-muted-foreground">
+              هزینه ارسال به‌صورت کامل از اینجا کنترل می‌شود — هیچ مقداری در کد نوشته نشده است
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          {/* Base shipping cost */}
+          <div className="space-y-1.5">
+            <label className="block text-sm font-semibold text-foreground">
+              هزینه پایه ارسال
+              <span className="me-1 text-xs font-normal text-muted-foreground">(ریال)</span>
+            </label>
+            <input
+              type="number"
+              name="shippingCost"
+              min="0"
+              step="1000"
+              defaultValue={
+                typeof settings.shippingCost === "number"
+                  ? String(settings.shippingCost)
+                  : "350000"
+              }
+              dir="ltr"
+              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <p className="text-xs text-muted-foreground">
+              این مقدار برای همه سفارش‌ها اعمال می‌شود مگر اینکه آستانه رایگان فعال باشد
+            </p>
+          </div>
+
+          {/* Free-shipping threshold toggle */}
+          <div className="rounded-xl border border-border/60 bg-muted/30 p-4 space-y-3">
+            <label className="flex cursor-pointer items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">آستانه ارسال رایگان</p>
+                <p className="text-xs text-muted-foreground">
+                  سفارش‌هایی که از این مبلغ بیشتر باشند ارسال رایگان دریافت می‌کنند
+                </p>
+              </div>
+              {/* Toggle switch */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={thresholdEnabled}
+                onClick={() => setThresholdEnabled((v) => !v)}
+                className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                  thresholdEnabled ? "bg-primary" : "bg-muted-foreground/30"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-200 ${
+                    thresholdEnabled ? "end-0.5" : "start-0.5"
+                  }`}
+                />
+              </button>
+            </label>
+
+            {thresholdEnabled ? (
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-muted-foreground">
+                  مبلغ آستانه (ریال)
+                </label>
+                <input
+                  type="number"
+                  name="freeShippingThreshold"
+                  min="0"
+                  step="10000"
+                  defaultValue={
+                    typeof storedThreshold === "number" ? String(storedThreshold) : "5000000"
+                  }
+                  dir="ltr"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+            ) : (
+              /* Send empty string so the action clears the threshold */
+              <input type="hidden" name="freeShippingThreshold" value="" />
+            )}
+          </div>
+
+          <div className="flex items-start gap-2 rounded-xl bg-blue-50 px-3 py-2.5 text-xs text-blue-700">
+            <Info size={13} className="mt-0.5 shrink-0" />
+            <span>
+              تغییرات بلافاصله برای همه سفارش‌های جدید اعمال می‌شود.
+              سفارش‌های ثبت‌شده قبلی تغییری نمی‌کنند.
+            </span>
+          </div>
+        </div>
+      </section>
 
       {state.success && (
         <p className="rounded-lg bg-green-50 px-4 py-2.5 text-sm font-medium text-green-700">

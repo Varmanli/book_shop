@@ -3,19 +3,37 @@ import { z } from "zod";
 const qualityGrades = ["Like New", "Very Good", "Good", "Acceptable"] as const;
 
 export const createBookSchema = z.object({
-  title: z.string().min(1, "عنوان الزامی است"),
+  title: z.string().min(1, "عنوان کتاب الزامی است"),
   slug: z.string().min(1).optional(),
-  author: z.string().min(1, "نام نویسنده الزامی است"),
+  author: z.string().min(1, "نویسنده کتاب را انتخاب کنید"),
   translator: z.string().optional().nullable(),
-  publisher: z.string().min(1, "ناشر الزامی است"),
+  publisher: z.string().min(1, "ناشر کتاب را انتخاب کنید"),
   isbn: z.string().optional().nullable(),
-  description: z.string().min(20, "توضیحات حداقل ۲۰ کاراکتر باید داشته باشد"),
-  categoryId: z.string().min(1, "دسته‌بندی الزامی است"),
+  description: z
+    .string()
+    .max(5000, "توضیحات کتاب بیش از حد مجاز است")
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.trim() !== "" ? v.trim() : "")),
+  categoryId: z.string().min(1, "دسته‌بندی کتاب را انتخاب کنید"),
   genreIds: z.array(z.string()).default([]),
   qualityGrade: z.enum(qualityGrades, { message: "درجه کیفیت نامعتبر است" }),
-  stock: z.coerce.number().int().min(0, "موجودی نمی‌تواند منفی باشد"),
-  price: z.coerce.number().int().min(1, "قیمت الزامی است"),
-  images: z.array(z.string().url()).default([]),
+  // Single-copy model: no numeric stock, just a sold flag
+  isSold: z.boolean().default(false),
+  price: z
+    .union([z.string(), z.number()])
+    .transform((v) => {
+      const n = typeof v === "number" ? v : Number(String(v).replace(/[^0-9]/g, ""));
+      return n;
+    })
+    .pipe(
+      z
+        .number({ invalid_type_error: "قیمت باید یک عدد معتبر باشد" })
+        .int("قیمت باید یک عدد معتبر باشد")
+        .min(1, "قیمت کتاب الزامی است")
+        .nonnegative("قیمت نمی‌تواند منفی باشد")
+    ),
+  images: z.array(z.string()).default([]),
   publishedYear: z.coerce.number().int().min(1000).max(2100).optional().nullable(),
   pageCount: z.coerce.number().int().min(1).optional().nullable(),
   language: z.string().default("Persian"),

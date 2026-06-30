@@ -2,7 +2,7 @@
 
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { HomeSlide } from "@/types";
@@ -11,31 +11,66 @@ interface Props {
   slides: HomeSlide[];
 }
 
+function HeroFallback() {
+  return (
+    <section
+      className="relative overflow-hidden bg-linear-to-l from-primary via-primary/80 to-primary/60"
+      aria-label="اسلایدر اصلی"
+    >
+      <div className="relative h-120 w-full sm:h-135 lg:h-155">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-24 right-1/3 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute -bottom-24 left-1/4 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+        </div>
+        <div className="absolute inset-0 flex items-center">
+          <div className="container mx-auto max-w-7xl px-6">
+            <div className="max-w-xl">
+              <h1 className="text-3xl font-extrabold leading-tight text-white drop-shadow-lg sm:text-4xl lg:text-5xl">
+                به کتابخانه خوش آمدید
+              </h1>
+              <p className="mt-4 text-base font-medium text-white/85 drop-shadow sm:text-lg">
+                بهترین کتاب‌های دست دوم با کیفیت و قیمت مناسب
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link
+                  href="/books"
+                  className="inline-flex items-center rounded-xl bg-white px-7 py-3.5 text-sm font-bold text-primary shadow-lg transition-all hover:scale-105 hover:shadow-xl"
+                >
+                  مشاهده کتاب‌ها
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function HeroSlider({ slides }: Props) {
-  const autoplayRef = useRef(Autoplay({ delay: 5000, stopOnInteraction: true }));
+  const [autoplay] = useState(() => Autoplay({ delay: 5000, stopOnInteraction: true }));
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { loop: true, direction: "rtl" },
-    [autoplayRef.current]
+    [autoplay],
   );
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const scrollTo = useCallback(
     (index: number) => emblaApi?.scrollTo(index),
-    [emblaApi]
+    [emblaApi],
   );
-
-  const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
-  const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
 
   useEffect(() => {
     if (!emblaApi) return;
     const onSelect = () => setSelectedIndex(emblaApi.selectedScrollSnap());
     emblaApi.on("select", onSelect);
     onSelect();
-    return () => { emblaApi.off("select", onSelect); };
+    return () => {
+      emblaApi.off("select", onSelect);
+    };
   }, [emblaApi]);
 
-  if (slides.length === 0) return null;
+  if (slides.length === 0) return <HeroFallback />;
 
   return (
     <section className="relative overflow-hidden" aria-label="اسلایدر اصلی">
@@ -45,7 +80,7 @@ export function HeroSlider({ slides }: Props) {
           {slides.map((slide) => (
             <div key={slide.id} className="relative min-w-0 flex-[0_0_100%]">
               {/* Background image */}
-              <div className="relative h-[480px] w-full sm:h-[540px] lg:h-[620px]">
+              <div className="relative h-120 w-full sm:h-135 lg:h-155">
                 <Image
                   src={slide.imageUrl}
                   alt={slide.title}
@@ -55,13 +90,13 @@ export function HeroSlider({ slides }: Props) {
                   sizes="100vw"
                 />
                 {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-l from-black/70 via-black/40 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-l from-black/70 via-black/40 to-transparent" />
               </div>
 
               {/* Text content */}
               <div className="absolute inset-0 flex items-center">
-                <div className="container mx-auto max-w-7xl px-6">
-                  <div className="max-w-xl">
+                <div className="container mx-auto max-w-8xl px-2">
+                  <div className="max-w-2xl">
                     <h1 className="text-3xl font-extrabold leading-tight text-white drop-shadow-lg sm:text-4xl lg:text-5xl">
                       {slide.title}
                     </h1>
@@ -93,30 +128,6 @@ export function HeroSlider({ slides }: Props) {
           ))}
         </div>
       </div>
-
-      {/* Prev / Next arrows */}
-      {slides.length > 1 && (
-        <>
-          <button
-            onClick={scrollPrev}
-            aria-label="اسلاید قبلی"
-            className="absolute right-4 top-1/2 z-10 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition hover:bg-black/50"
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-              <path d="M12 4l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-          <button
-            onClick={scrollNext}
-            aria-label="اسلاید بعدی"
-            className="absolute left-4 top-1/2 z-10 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition hover:bg-black/50"
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-              <path d="M8 4l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-        </>
-      )}
 
       {/* Dot indicators */}
       {slides.length > 1 && (

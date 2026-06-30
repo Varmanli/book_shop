@@ -13,10 +13,6 @@ export const siteConfig = {
     phone: "",
     address: "",
   },
-  shipping: {
-    freeShippingThreshold: 5000000,
-    defaultShippingCost: 350000,
-  },
 } as const;
 
 export type SiteConfig = typeof siteConfig;

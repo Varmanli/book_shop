@@ -12,61 +12,61 @@ const CATEGORY_META: Record<string, CategoryMeta> = {
   fiction: {
     icon: "📖",
     seed: "fiction-books",
-    gradient: "from-violet-900/85 via-purple-800/60 to-transparent",
+    gradient: "from-violet-900/15 via-purple-800/20 to-transparent",
     accentColor: "bg-violet-500",
   },
   "non-fiction": {
     icon: "🔬",
     seed: "science-library",
-    gradient: "from-sky-900/85 via-blue-800/60 to-transparent",
+    gradient: "from-sky-900/15 via-blue-800/20 to-transparent",
     accentColor: "bg-sky-500",
   },
   mystery: {
     icon: "🔍",
     seed: "mystery-dark",
-    gradient: "from-gray-900/90 via-slate-800/65 to-transparent",
+    gradient: "from-gray-900/15 via-slate-800/20 to-transparent",
     accentColor: "bg-slate-500",
   },
   "sci-fi": {
     icon: "🚀",
     seed: "space-galaxy",
-    gradient: "from-cyan-900/85 via-teal-800/60 to-transparent",
+    gradient: "from-cyan-900/15 via-teal-800/20 to-transparent",
     accentColor: "bg-cyan-500",
   },
   romance: {
     icon: "❤️",
     seed: "romance-flowers",
-    gradient: "from-rose-900/85 via-pink-800/60 to-transparent",
+    gradient: "from-rose-900/15 via-pink-800/20 to-transparent",
     accentColor: "bg-rose-500",
   },
   biography: {
     icon: "👤",
     seed: "biography-portrait",
-    gradient: "from-amber-900/85 via-orange-800/60 to-transparent",
+    gradient: "from-amber-900/15 via-orange-800/20 to-transparent",
     accentColor: "bg-amber-500",
   },
   history: {
     icon: "🏛️",
     seed: "ancient-history",
-    gradient: "from-stone-900/85 via-stone-700/60 to-transparent",
+    gradient: "from-stone-900/15 via-stone-700/20 to-transparent",
     accentColor: "bg-stone-500",
   },
   poetry: {
     icon: "🌸",
     seed: "poetry-nature",
-    gradient: "from-fuchsia-900/85 via-pink-800/60 to-transparent",
+    gradient: "from-fuchsia-900/15 via-pink-800/20 to-transparent",
     accentColor: "bg-fuchsia-500",
   },
   children: {
     icon: "🧒",
     seed: "children-colorful",
-    gradient: "from-green-900/85 via-emerald-800/60 to-transparent",
+    gradient: "from-green-900/15 via-emerald-800/20 to-transparent",
     accentColor: "bg-green-500",
   },
   philosophy: {
     icon: "💭",
     seed: "philosophy-mind",
-    gradient: "from-indigo-900/85 via-blue-900/60 to-transparent",
+    gradient: "from-indigo-900/15 via-blue-900/20 to-transparent",
     accentColor: "bg-indigo-500",
   },
 };
@@ -111,8 +111,19 @@ export function CategoryGrid({ categories }: Props) {
         {/* Section header */}
         <div className="mb-10 flex flex-col items-center gap-2 text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary/10 px-3 py-1 text-xs font-semibold text-secondary">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
-              <path d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              aria-hidden
+            >
+              <path
+                d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3z"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinejoin="round"
+              />
             </svg>
             کشف کنید
           </span>
@@ -176,11 +187,11 @@ function CategoryCard({ category, meta, image, index }: CardProps) {
 
       {/* Gradient overlay — always dark at bottom, darker on hover */}
       <div
-        className={`absolute inset-0 bg-gradient-to-t ${meta.gradient} transition-opacity duration-300 group-hover:opacity-95`}
+        className={`absolute inset-0 bg-linear-to-t ${meta.gradient} transition-opacity duration-300 group-hover:opacity-95`}
       />
 
       {/* Top-right icon badge */}
-      <div className="absolute end-3 top-3 flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 text-xl shadow-sm backdrop-blur-sm transition-transform duration-300 group-hover:scale-110">
+      <div className="absolute right-4 top-3 flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 text-xl shadow-sm backdrop-blur-sm transition-transform duration-300 group-hover:scale-110">
         {meta.icon}
       </div>
 
@@ -189,9 +200,7 @@ function CategoryCard({ category, meta, image, index }: CardProps) {
         {/* Book count pill */}
         {category.bookCount > 0 && (
           <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${meta.accentColor}`}
-            />
+            <span className={`h-1.5 w-1.5 rounded-full ${meta.accentColor}`} />
             {category.bookCount} کتاب
           </span>
         )}
@@ -210,8 +219,20 @@ function CategoryCard({ category, meta, image, index }: CardProps) {
         <div className="mt-2 translate-y-3 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/25 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
             مشاهده کتاب‌ها
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
-              <path d="M7.5 3L4.5 6l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              aria-hidden
+            >
+              <path
+                d="M7.5 3L4.5 6l3 3"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </span>
         </div>

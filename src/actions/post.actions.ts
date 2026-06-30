@@ -8,15 +8,43 @@ import { revalidateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { Post } from "@/types";
 
+function extractPostRaw(formData: FormData) {
+  return {
+    title: formData.get("title"),
+    slug: formData.get("slug") || undefined, // empty string → undefined so repo auto-generates
+    excerpt: formData.get("excerpt"),
+    content: formData.get("content"),
+    coverImage: formData.get("coverImage") || null,
+    status: formData.get("status"),
+    category: formData.get("category"),
+  };
+}
+
+function safePostError(error: unknown, fallback: string): string {
+  if (!(error instanceof Error)) return fallback;
+  const msg = error.message.toLowerCase();
+  if (
+    msg.includes("prisma") ||
+    msg.includes("unique constraint") ||
+    msg.includes("database") ||
+    msg.includes("zod") ||
+    msg.includes("internal")
+  ) {
+    return fallback;
+  }
+  return fallback;
+}
+
 export async function createPostAction(
   _: unknown,
   formData: FormData
 ): Promise<ApiResponse<Post>> {
   const session = await requireAdmin();
 
-  const parsed = createPostSchema.safeParse(Object.fromEntries(formData));
+  const raw = extractPostRaw(formData);
+  const parsed = createPostSchema.safeParse(raw);
   if (!parsed.success) {
-    return fail("داده‌های ورودی نامعتبر است", parsed.error.flatten().fieldErrors);
+    return fail("ثبت مقاله با خطا مواجه شد. لطفاً خطاهای فرم را بررسی کنید.", parsed.error.flatten().fieldErrors);
   }
 
   try {
@@ -24,7 +52,7 @@ export async function createPostAction(
     revalidateTag(CACHE_TAGS.posts, "max");
     return ok(post);
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "خطا در ایجاد پست");
+    return fail(safePostError(error, "ثبت مقاله با خطا مواجه شد. لطفاً دوباره تلاش کنید."));
   }
 }
 
@@ -35,9 +63,10 @@ export async function updatePostAction(
 ): Promise<ApiResponse<Post>> {
   await requireAdmin();
 
-  const parsed = updatePostSchema.safeParse(Object.fromEntries(formData));
+  const raw = extractPostRaw(formData);
+  const parsed = updatePostSchema.safeParse(raw);
   if (!parsed.success) {
-    return fail("داده‌های ورودی نامعتبر است", parsed.error.flatten().fieldErrors);
+    return fail("ویرایش مقاله با خطا مواجه شد. لطفاً خطاهای فرم را بررسی کنید.", parsed.error.flatten().fieldErrors);
   }
 
   try {
@@ -46,7 +75,7 @@ export async function updatePostAction(
     if (post) revalidateTag(CACHE_TAGS.post(post.slug), "max");
     return ok(post);
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "خطا در ویرایش پست");
+    return fail(safePostError(error, "ویرایش مقاله با خطا مواجه شد. لطفاً دوباره تلاش کنید."));
   }
 }
 
@@ -58,7 +87,7 @@ export async function deletePostAction(id: string): Promise<ApiResponse<null>> {
     revalidateTag(CACHE_TAGS.posts, "max");
     if (post) revalidateTag(CACHE_TAGS.post(post.slug), "max");
     return ok(null);
-  } catch (error) {
-    return fail(error instanceof Error ? error.message : "خطا در حذف پست");
+  } catch {
+    return fail("حذف مقاله با خطا مواجه شد.");
   }
 }

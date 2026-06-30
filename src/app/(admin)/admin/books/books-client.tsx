@@ -20,7 +20,7 @@ type Book = {
   title: string;
   author: string;
   price: number;
-  stock: number;
+  isSold: boolean;
   qualityGrade: string;
   images: string[];
   slug: string;
@@ -161,8 +161,8 @@ export function AdminBooksClient({ books, meta, categories, currentPage, current
                     <td className="px-4 py-3 text-muted-foreground">{book.category?.name ?? "—"}</td>
                     <td className="px-4 py-3 font-semibold">{book.price.toLocaleString("fa-IR")} ت</td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${book.stock === 0 ? "bg-red-100 text-red-700" : book.stock <= 5 ? "bg-yellow-100 text-yellow-700" : "bg-green-100 text-green-700"}`}>
-                        {book.stock === 0 ? "ناموجود" : book.stock}
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${book.isSold ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
+                        {book.isSold ? "فروخته شده" : "موجود"}
                       </span>
                     </td>
                     <td className="px-4 py-3">

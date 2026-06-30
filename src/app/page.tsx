@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
 };
 
-const SHOWCASE_GENRE_SLUGS = ["thriller", "romance", "history", "dystopia"];
+const SHOWCASE_GENRE_SLUGS = ["thriller", "romance", "history-genre", "dystopia"];
 
 async function HeroSection() {
   const slides = await findActiveSlides();

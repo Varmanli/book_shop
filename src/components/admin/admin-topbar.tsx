@@ -6,19 +6,25 @@ import { signOut } from "next-auth/react";
 
 interface Props {
   user: { name: string; email: string; image?: string | null };
+  onMenuClick?: () => void;
 }
 
-export function AdminTopbar({ user }: Props) {
+export function AdminTopbar({ user, onMenuClick }: Props) {
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6 shadow-sm">
+    <header className="flex h-16 items-center justify-between border-b border-border bg-card px-4 shadow-sm sm:px-6">
       <div className="flex items-center gap-3">
+        {/* Mobile: hamburger */}
+        <button
+          onClick={onMenuClick}
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground md:hidden"
+          aria-label="باز کردن منو"
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+            <path d="M2 4.5h14M2 9h14M2 13.5h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </button>
         {/* Mobile logo */}
         <Link href="/admin" className="flex items-center gap-2 md:hidden">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <svg width="16" height="16" viewBox="0 0 18 18" fill="none" aria-hidden>
-              <rect x="5" y="2" width="10" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-            </svg>
-          </div>
           <span className="text-sm font-extrabold text-foreground">پنل مدیریت</span>
         </Link>
       </div>

@@ -1,0 +1,1 @@
+ALTER TABLE "genres" ADD COLUMN "image" text;

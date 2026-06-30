@@ -14,17 +14,21 @@ export async function createGenreAction(
 ): Promise<ApiResponse<Genre>> {
   await requireAdmin();
 
-  const parsed = createGenreSchema.safeParse(Object.fromEntries(formData));
+  const raw = {
+    name: formData.get("name"),
+    image: formData.get("image") || null,
+  };
+  const parsed = createGenreSchema.safeParse(raw);
   if (!parsed.success) {
-    return fail("داده‌های ورودی نامعتبر است", parsed.error.flatten().fieldErrors);
+    return fail("ثبت ژانر با خطا مواجه شد. لطفاً خطاهای فرم را بررسی کنید.", parsed.error.flatten().fieldErrors);
   }
 
   try {
     const genre = await genreRepo.createGenre(parsed.data);
     revalidateTag(CACHE_TAGS.genres, "max");
     return ok(genre);
-  } catch (error) {
-    return fail(error instanceof Error ? error.message : "خطا در ایجاد ژانر");
+  } catch {
+    return fail("ثبت ژانر با خطا مواجه شد. لطفاً دوباره تلاش کنید.");
   }
 }
 
@@ -35,17 +39,21 @@ export async function updateGenreAction(
 ): Promise<ApiResponse<Genre>> {
   await requireAdmin();
 
-  const parsed = updateGenreSchema.safeParse(Object.fromEntries(formData));
+  const raw = {
+    name: formData.get("name"),
+    image: formData.get("image") || null,
+  };
+  const parsed = updateGenreSchema.safeParse(raw);
   if (!parsed.success) {
-    return fail("داده‌های ورودی نامعتبر است", parsed.error.flatten().fieldErrors);
+    return fail("ویرایش ژانر با خطا مواجه شد. لطفاً خطاهای فرم را بررسی کنید.", parsed.error.flatten().fieldErrors);
   }
 
   try {
     const genre = await genreRepo.updateGenre(id, parsed.data);
     revalidateTag(CACHE_TAGS.genres, "max");
     return ok(genre);
-  } catch (error) {
-    return fail(error instanceof Error ? error.message : "خطا در ویرایش ژانر");
+  } catch {
+    return fail("ویرایش ژانر با خطا مواجه شد. لطفاً دوباره تلاش کنید.");
   }
 }
 

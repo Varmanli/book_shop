@@ -1,11 +1,18 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import Link from "next/link";
 import { findBooks } from "@/repositories/book.repository";
+import { findCartItems } from "@/repositories/cart.repository";
 import { findCategoriesWithCount } from "@/repositories/category.repository";
 import { findGenresWithCount } from "@/repositories/genre.repository";
+import { findWishlistItems } from "@/repositories/wishlist.repository";
 import { BookCardSkeleton } from "@/components/books/listing-book-card";
 import { BooksLayoutClient } from "@/components/books/books-layout-client";
+import { auth } from "@/lib/auth";
+import { CART_SESSION_COOKIE } from "@/config/cart";
 import type { BookFilters, BookSortField, SortOrder, QualityGrade } from "@/types/domain";
+import type { PaginationMeta } from "@/types/api";
 
 export const metadata: Metadata = {
   title: "همه کتاب‌ها",
@@ -26,6 +33,22 @@ type SearchParams = {
 
 type Props = { searchParams: Promise<SearchParams> };
 
+type BooksPageBook = {
+  id: string;
+  title: string;
+  slug: string;
+  author: string;
+  publisher: string;
+  qualityGrade: QualityGrade;
+  price: number;
+  isSold: boolean;
+  images: string[];
+  isFeatured: boolean;
+  initialInCart: boolean;
+  initialInWishlist: boolean;
+  category?: { name: string; slug: string } | null;
+};
+
 function parseSort(sort?: string): { field: BookSortField; order: SortOrder } {
   switch (sort) {
     case "price_asc": return { field: "price", order: "asc" };
@@ -37,6 +60,9 @@ function parseSort(sort?: string): { field: BookSortField; order: SortOrder } {
 
 async function BooksContent({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const sp = await searchParams;
+  const session = await auth();
+  const cookieStore = await cookies();
+  const guestCartSessionId = cookieStore.get(CART_SESSION_COOKIE)?.value;
 
   const categorySlug = sp.category ?? "";
   const genreId = sp.genre ?? "";
@@ -48,9 +74,15 @@ async function BooksContent({ searchParams }: { searchParams: Promise<SearchPara
   const sortKey = sp.sort ?? "createdAt_desc";
   const page = Math.max(1, parseInt(sp.page ?? "1", 10));
 
-  const [allCategories, allGenres] = await Promise.all([
+  const [allCategories, allGenres, wishlistItems, cartItems] = await Promise.all([
     findCategoriesWithCount(),
     findGenresWithCount(),
+    session?.user?.id ? findWishlistItems(session.user.id) : Promise.resolve([]),
+    session?.user?.id
+      ? findCartItems({ userId: session.user.id })
+      : guestCartSessionId
+        ? findCartItems({ sessionId: guestCartSessionId })
+        : Promise.resolve([]),
   ]);
 
   /* Resolve category id from slug */
@@ -76,6 +108,13 @@ async function BooksContent({ searchParams }: { searchParams: Promise<SearchPara
   };
 
   const { items: books, meta } = await findBooks(filters, { page, pageSize: 24 }, parseSort(sortKey));
+  const wishlistBookIds = new Set(wishlistItems.map((item) => item.bookId));
+  const cartBookIds = new Set(cartItems.map((item) => item.bookId));
+  const booksWithState = books.map((book) => ({
+    ...book,
+    initialInCart: cartBookIds.has(book.id),
+    initialInWishlist: wishlistBookIds.has(book.id),
+  }));
 
   const filterCategories = allCategories.map((c) => ({
     id: c.id,
@@ -112,29 +151,23 @@ async function BooksContent({ searchParams }: { searchParams: Promise<SearchPara
   if (sortKey !== "createdAt_desc") spRecord.sort = sortKey;
 
   return (
-    <main className="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Breadcrumb */}
-      <nav className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground" aria-label="breadcrumb">
-        <a href="/" className="transition hover:text-primary">خانه</a>
+      <nav className="mb-5 flex items-center gap-1.5 text-xs text-muted-foreground" aria-label="breadcrumb">
+        <Link href="/" className="transition hover:text-primary">خانه</Link>
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden className="rtl:rotate-180">
           <path d="M4.5 2.5L8 6l-3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <span className="font-medium text-foreground">همه کتاب‌ها</span>
       </nav>
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-foreground sm:text-3xl">همه کتاب‌ها</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {meta.total.toLocaleString("fa-IR")} کتاب در مجموعه ما
-        </p>
-      </div>
-
       <BooksLayoutClient
         filterCategories={filterCategories}
         filterGenres={filterGenres}
         activeFilters={activeFilters}
-        books={books as any}
-        meta={meta}
+        isLoggedIn={Boolean(session?.user)}
+        books={booksWithState as BooksPageBook[]}
+        meta={meta as PaginationMeta}
         spRecord={spRecord}
         categoryName={categoryName}
         genreName={genreName}
@@ -145,10 +178,11 @@ async function BooksContent({ searchParams }: { searchParams: Promise<SearchPara
 
 function BooksPageSkeleton() {
   return (
-    <div className="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-6 space-y-2">
-        <div className="h-8 w-48 animate-pulse rounded-xl bg-muted" />
-        <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      {/* Search + sort skeleton */}
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="h-14 flex-1 animate-pulse rounded-2xl bg-muted" />
+        <div className="h-12 w-48 shrink-0 animate-pulse rounded-2xl bg-muted" />
       </div>
       <div className="flex gap-8">
         <div className="hidden w-72 shrink-0 rounded-2xl bg-muted/60 lg:block" style={{ height: 480 }} />

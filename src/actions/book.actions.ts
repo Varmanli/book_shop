@@ -8,35 +8,59 @@ import { revalidateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { Book } from "@/types";
 
-export async function createBookAction(
-  _: unknown,
-  formData: FormData
-): Promise<ApiResponse<Book>> {
-  await requireAdmin();
-
-  const raw = {
+function extractBookRaw(formData: FormData) {
+  return {
     title: formData.get("title"),
     author: formData.get("author"),
     translator: formData.get("translator") || null,
     publisher: formData.get("publisher"),
     isbn: formData.get("isbn") || null,
-    description: formData.get("description"),
+    description: formData.get("description") || null,
     categoryId: formData.get("categoryId"),
     genreIds: formData.getAll("genreIds"),
     qualityGrade: formData.get("qualityGrade"),
-    stock: formData.get("stock"),
     price: formData.get("price"),
     images: formData.getAll("images").filter(Boolean),
     publishedYear: formData.get("publishedYear") || null,
     pageCount: formData.get("pageCount") || null,
     language: formData.get("language") || "Persian",
     isFeatured: formData.get("isFeatured") === "true",
-    isPublished: formData.get("isPublished") !== "false",
+    isPublished: formData.get("isPublished") === "true",
+    isSold: formData.get("isSold") === "true",
   };
+}
 
+function safeServerError(error: unknown, fallback: string): string {
+  if (!(error instanceof Error)) return fallback;
+  const msg = error.message.toLowerCase();
+  // Never expose raw DB / Zod / technical messages to admins
+  if (
+    msg.includes("prisma") ||
+    msg.includes("unique constraint") ||
+    msg.includes("foreign key") ||
+    msg.includes("database") ||
+    msg.includes("zod") ||
+    msg.includes("invalid") ||
+    msg.includes("internal")
+  ) {
+    return fallback;
+  }
+  return fallback;
+}
+
+export async function createBookAction(
+  _: unknown,
+  formData: FormData
+): Promise<ApiResponse<Book>> {
+  await requireAdmin();
+
+  const raw = extractBookRaw(formData);
   const parsed = createBookSchema.safeParse(raw);
   if (!parsed.success) {
-    return fail("داده‌های ورودی نامعتبر است", parsed.error.flatten().fieldErrors);
+    return fail(
+      "امکان ثبت کتاب وجود ندارد. لطفاً خطاهای فرم را بررسی کنید.",
+      parsed.error.flatten().fieldErrors
+    );
   }
 
   try {
@@ -45,7 +69,7 @@ export async function createBookAction(
     revalidateTag(CACHE_TAGS.booksList, "max");
     return ok(book);
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "خطا در ایجاد کتاب");
+    return fail(safeServerError(error, "ثبت کتاب با خطا مواجه شد. لطفاً دوباره تلاش کنید"));
   }
 }
 
@@ -56,10 +80,13 @@ export async function updateBookAction(
 ): Promise<ApiResponse<Book>> {
   await requireAdmin();
 
-  const raw = Object.fromEntries(formData.entries());
+  const raw = extractBookRaw(formData);
   const parsed = updateBookSchema.safeParse(raw);
   if (!parsed.success) {
-    return fail("داده‌های ورودی نامعتبر است", parsed.error.flatten().fieldErrors);
+    return fail(
+      "امکان ذخیره تغییرات وجود ندارد. لطفاً خطاهای فرم را بررسی کنید.",
+      parsed.error.flatten().fieldErrors
+    );
   }
 
   try {
@@ -68,7 +95,7 @@ export async function updateBookAction(
     revalidateTag(CACHE_TAGS.book(book.slug), "max");
     return ok(book);
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "خطا در ویرایش کتاب");
+    return fail(safeServerError(error, "ذخیره تغییرات با خطا مواجه شد. لطفاً دوباره تلاش کنید"));
   }
 }
 

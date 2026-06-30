@@ -146,7 +146,7 @@ async function OrderDetailContent({ params }: { params: Params }) {
                       <p className="text-sm font-bold text-foreground">
                         {item.unitPrice.toLocaleString("fa-IR")} ت
                       </p>
-                      <p className="text-xs text-muted-foreground">×{item.quantity}</p>
+                      <p className="text-xs text-muted-foreground">یک نسخه</p>
                     </div>
                   </li>
                 );

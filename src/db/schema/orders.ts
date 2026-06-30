@@ -6,6 +6,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { users } from "./users";
@@ -33,6 +34,11 @@ export const orders = pgTable(
     status: orderStatusEnum("status").default("PENDING").notNull(),
     subtotal: integer("subtotal").notNull(),
     shippingCost: integer("shipping_cost").default(0).notNull(),
+    /** Discount amount from coupon. Stored for immutable financial record. */
+    discountAmount: integer("discount_amount").notNull().default(0),
+    /** The coupon code used, if any. Stored as snapshot (coupon may later change). */
+    couponCode: text("coupon_code"),
+    /** total = subtotal + shippingCost − discountAmount */
     total: integer("total").notNull(),
     shippingAddress: jsonb("shipping_address").notNull(),
     notes: text("notes"),
@@ -64,10 +70,14 @@ export const orderItems = pgTable(
       .notNull()
       .references(() => books.id, { onDelete: "restrict" }),
     bookSnapshot: jsonb("book_snapshot").notNull(),
-    quantity: integer("quantity").notNull(),
+    // No quantity — each order item is exactly one unique physical book
     unitPrice: integer("unit_price").notNull(),
   },
-  (table) => [index("order_items_order_idx").on(table.orderId)]
+  (table) => [
+    index("order_items_order_idx").on(table.orderId),
+    // A book can only appear in one order (it's a physical unique copy)
+    uniqueIndex("order_items_book_unique").on(table.bookId),
+  ]
 );
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({

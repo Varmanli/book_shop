@@ -14,3 +14,5 @@ export type { ContactMessage, NewContactMessage } from "@/db/schema/contact";
 export type { NewsletterSubscriber, NewNewsletterSubscriber } from "@/db/schema/newsletter";
 export type { TeamMember, NewTeamMember } from "@/db/schema/team";
 export type { HomeSlide, NewHomeSlide } from "@/db/schema/home-slides";
+export type { Coupon, NewCoupon } from "@/db/schema/coupons";
+export type { Transaction, NewTransaction } from "@/db/schema/transactions";

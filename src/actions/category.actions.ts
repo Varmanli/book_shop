@@ -14,17 +14,22 @@ export async function createCategoryAction(
 ): Promise<ApiResponse<Category>> {
   await requireAdmin();
 
-  const parsed = createCategorySchema.safeParse(Object.fromEntries(formData));
+  const raw = {
+    name: formData.get("name"),
+    description: formData.get("description") || null,
+    image: formData.get("image") || null,
+  };
+  const parsed = createCategorySchema.safeParse(raw);
   if (!parsed.success) {
-    return fail("داده‌های ورودی نامعتبر است", parsed.error.flatten().fieldErrors);
+    return fail("ثبت دسته‌بندی با خطا مواجه شد. لطفاً خطاهای فرم را بررسی کنید.", parsed.error.flatten().fieldErrors);
   }
 
   try {
     const category = await categoryService.createCategory(parsed.data);
     revalidateTag(CACHE_TAGS.categories, "max");
     return ok(category);
-  } catch (error) {
-    return fail(error instanceof Error ? error.message : "خطا در ایجاد دسته‌بندی");
+  } catch {
+    return fail("ثبت دسته‌بندی با خطا مواجه شد. لطفاً دوباره تلاش کنید.");
   }
 }
 
@@ -35,17 +40,22 @@ export async function updateCategoryAction(
 ): Promise<ApiResponse<Category>> {
   await requireAdmin();
 
-  const parsed = updateCategorySchema.safeParse(Object.fromEntries(formData));
+  const raw = {
+    name: formData.get("name"),
+    description: formData.get("description") || null,
+    image: formData.get("image") || null,
+  };
+  const parsed = updateCategorySchema.safeParse(raw);
   if (!parsed.success) {
-    return fail("داده‌های ورودی نامعتبر است", parsed.error.flatten().fieldErrors);
+    return fail("ویرایش دسته‌بندی با خطا مواجه شد. لطفاً خطاهای فرم را بررسی کنید.", parsed.error.flatten().fieldErrors);
   }
 
   try {
     const category = await categoryService.updateCategory(id, parsed.data);
     revalidateTag(CACHE_TAGS.categories, "max");
     return ok(category);
-  } catch (error) {
-    return fail(error instanceof Error ? error.message : "خطا در ویرایش دسته‌بندی");
+  } catch {
+    return fail("ویرایش دسته‌بندی با خطا مواجه شد. لطفاً دوباره تلاش کنید.");
   }
 }
 

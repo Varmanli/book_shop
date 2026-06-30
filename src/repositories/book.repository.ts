@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gt, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { db } from "@/db";
 import { books, bookGenres } from "@/db/schema";
@@ -42,8 +42,9 @@ export async function findBooks(
       )
     );
   }
-  if (filters.inStock) {
-    conditions.push(gt(books.stock, 0));
+  // Single-copy model: "available" = not sold
+  if (filters.available) {
+    conditions.push(eq(books.isSold, false));
   }
   if (filters.genreId) {
     conditions.push(
@@ -216,6 +217,21 @@ export async function updateBook(id: string, data: UpdateBookInput) {
 export async function deleteBook(id: string) {
   const [deleted] = await db.delete(books).where(eq(books.id, id)).returning();
   return deleted;
+}
+
+/**
+ * Atomically marks books as sold.
+ * Returns the IDs that were successfully marked (only those that were not already sold).
+ * If fewer IDs are returned than requested, some were already sold — caller must abort.
+ */
+export async function markBooksAsSold(bookIds: string[]): Promise<string[]> {
+  if (bookIds.length === 0) return [];
+  const rows = await db
+    .update(books)
+    .set({ isSold: true, updatedAt: new Date() })
+    .where(and(inArray(books.id, bookIds), eq(books.isSold, false)))
+    .returning({ id: books.id });
+  return rows.map((r) => r.id);
 }
 
 export async function countBooks() {

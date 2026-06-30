@@ -29,20 +29,14 @@ export async function findCartItem(identifier: CartIdentifier, bookId: string) {
   });
 }
 
-export async function addCartItem(
-  identifier: CartIdentifier,
-  bookId: string,
-  quantity: number
-) {
+/**
+ * Adds a book to the cart. Throws if the book is already in this cart —
+ * each physical book can appear only once.
+ */
+export async function addCartItem(identifier: CartIdentifier, bookId: string) {
   const existing = await findCartItem(identifier, bookId);
-
   if (existing) {
-    const [updated] = await db
-      .update(cartItems)
-      .set({ quantity: existing.quantity + quantity, updatedAt: new Date() })
-      .where(eq(cartItems.id, existing.id))
-      .returning();
-    return updated;
+    throw new Error("این کتاب قبلاً در سبد خرید شماست");
   }
 
   const [created] = await db
@@ -51,19 +45,9 @@ export async function addCartItem(
       userId: "userId" in identifier ? identifier.userId : null,
       sessionId: "sessionId" in identifier ? identifier.sessionId : null,
       bookId,
-      quantity,
     })
     .returning();
   return created;
-}
-
-export async function updateCartItemQuantity(id: string, quantity: number) {
-  const [updated] = await db
-    .update(cartItems)
-    .set({ quantity, updatedAt: new Date() })
-    .where(eq(cartItems.id, id))
-    .returning();
-  return updated;
 }
 
 export async function removeCartItem(id: string) {
@@ -78,6 +62,10 @@ export async function clearCart(identifier: CartIdentifier) {
   await db.delete(cartItems).where(where);
 }
 
+/**
+ * Merges guest cart into user cart after login.
+ * Skips any book already present in the user's cart (no duplicates).
+ */
 export async function mergeGuestCartIntoUserCart(
   sessionId: string,
   userId: string
@@ -87,7 +75,10 @@ export async function mergeGuestCartIntoUserCart(
   });
 
   for (const item of guestItems) {
-    await addCartItem({ userId }, item.bookId, item.quantity);
+    const alreadyInCart = await findCartItem({ userId }, item.bookId);
+    if (!alreadyInCart) {
+      await addCartItem({ userId }, item.bookId);
+    }
   }
 
   await clearCart({ sessionId });

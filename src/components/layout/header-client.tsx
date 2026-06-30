@@ -3,6 +3,19 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  LogOut,
+  Menu,
+  Settings,
+  Shield,
+  ShoppingBag,
+  ShoppingCart,
+  User,
+  X,
+} from "lucide-react";
+import { SearchBar } from "@/components/search/search-bar";
+import { MiniCart } from "@/components/cart/mini-cart";
+import { useCart } from "@/components/cart/cart-context";
 
 const NAV_LINKS = [
   { href: "/", label: "صفحه اصلی" },
@@ -24,7 +37,8 @@ function UserMenu({ isLoggedIn, isAdmin, userName }: UserMenuProps) {
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     }
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -43,7 +57,7 @@ function UserMenu({ isLoggedIn, isAdmin, userName }: UserMenuProps) {
           href="/auth/register"
           className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90"
         >
-          ثبت‌نام
+          ثبت‌نامbg-linear-to-br
         </Link>
       </div>
     );
@@ -51,89 +65,80 @@ function UserMenu({ isLoggedIn, isAdmin, userName }: UserMenuProps) {
 
   return (
     <div ref={ref} className="relative">
+      {/* Avatar Button */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary transition hover:bg-primary/20"
+        className="group flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-primary/20 to-primary/10 text-primary shadow-sm transition-all hover:scale-105 hover:shadow-md"
         aria-label="منوی کاربری"
       >
-        {userName?.[0] ?? "U"}
+        <span className="text-sm font-bold">
+          {userName?.[0]?.toUpperCase() ?? "U"}
+        </span>
       </button>
 
+      {/* Dropdown */}
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-xl border border-border bg-popover shadow-xl">
-          <div className="border-b border-border px-4 py-3">
-            <p className="text-sm font-semibold text-foreground">{userName}</p>
+        <div className="absolute left-0 top-full z-50 mt-3 w-56 overflow-hidden rounded-2xl border border-border bg-popover/95 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95">
+          {/* Header */}
+          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <User size={16} />
+            </div>
+
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-foreground">
+                {userName}
+              </p>
+              <p className="text-xs text-muted-foreground">حساب کاربری</p>
+            </div>
           </div>
+
+          {/* Menu */}
           <div className="py-1">
             <Link
               href="/account"
               onClick={() => setOpen(false)}
-              className="block px-4 py-2 text-sm text-foreground transition hover:bg-muted"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-foreground transition hover:bg-muted/60"
             >
-              حساب کاربری
+              <Settings size={16} />
+              تنظیمات حساب
             </Link>
+
             <Link
               href="/account/orders"
               onClick={() => setOpen(false)}
-              className="block px-4 py-2 text-sm text-foreground transition hover:bg-muted"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-foreground transition hover:bg-muted/60"
             >
+              <ShoppingBag size={16} />
               سفارش‌ها
             </Link>
+
             {isAdmin && (
               <Link
                 href="/admin"
                 onClick={() => setOpen(false)}
-                className="block px-4 py-2 text-sm font-medium text-primary transition hover:bg-muted"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/10"
               >
+                <Shield size={16} />
                 پنل مدیریت
               </Link>
             )}
+
+            <div className="my-1 border-t border-border" />
+
             <form action="/api/auth/signout" method="post">
               <button
                 type="submit"
-                className="w-full px-4 py-2 text-right text-sm text-destructive transition hover:bg-muted"
+                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-500 transition hover:bg-red-500/10"
               >
-                خروج
+                <LogOut size={16} />
+                خروج از حساب
               </button>
             </form>
           </div>
         </div>
       )}
     </div>
-  );
-}
-
-interface SearchBarProps {
-  className?: string;
-  onClose?: () => void;
-}
-
-function SearchBar({ className = "", onClose }: SearchBarProps) {
-  return (
-    <form
-      action="/books"
-      method="get"
-      className={`relative ${className}`}
-      onSubmit={onClose}
-    >
-      <input
-        type="search"
-        name="q"
-        placeholder="جستجوی کتاب، نویسنده..."
-        className="w-full rounded-xl border border-border bg-muted/60 py-2 pe-10 ps-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
-        dir="rtl"
-      />
-      <button
-        type="submit"
-        className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
-        aria-label="جستجو"
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-          <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </button>
-    </form>
   );
 }
 
@@ -144,7 +149,38 @@ interface HeaderClientProps {
   cartCount: number;
 }
 
-export function HeaderClient({ isLoggedIn, isAdmin, userName, cartCount }: HeaderClientProps) {
+function CartButton({ initialCount }: { initialCount: number }) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const { itemCount, hasLoaded } = useCart();
+  const count = hasLoaded ? itemCount : initialCount;
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-foreground/80 transition hover:bg-muted hover:text-foreground"
+        aria-label="سبد خرید"
+      >
+        <ShoppingCart size={19} aria-hidden />
+        {count > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+            {count > 99 ? "99+" : count}
+          </span>
+        )}
+      </button>
+
+      {open && <MiniCart onClose={() => setOpen(false)} />}
+    </div>
+  );
+}
+
+export function HeaderClient({
+  isLoggedIn,
+  isAdmin,
+  userName,
+  cartCount,
+}: HeaderClientProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
@@ -155,10 +191,6 @@ export function HeaderClient({ isLoggedIn, isAdmin, userName, cartCount }: Heade
     handler();
     return () => window.removeEventListener("scroll", handler);
   }, []);
-
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
 
   return (
     <header
@@ -172,20 +204,48 @@ export function HeaderClient({ isLoggedIn, isAdmin, userName, cartCount }: Heade
           href="/"
           className="flex shrink-0 items-center gap-2 text-lg font-bold text-foreground"
         >
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden>
-            <rect x="3" y="4" width="16" height="20" rx="2" fill="currentColor" className="text-primary" />
-            <rect x="9" y="4" width="16" height="20" rx="2" fill="currentColor" className="text-primary/50" />
-            <path d="M7 9h8M7 13h8M7 17h5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 28 28"
+            fill="none"
+            aria-hidden
+          >
+            <rect
+              x="3"
+              y="4"
+              width="16"
+              height="20"
+              rx="2"
+              fill="currentColor"
+              className="text-primary"
+            />
+            <rect
+              x="9"
+              y="4"
+              width="16"
+              height="20"
+              rx="2"
+              fill="currentColor"
+              className="text-primary/50"
+            />
+            <path
+              d="M7 9h8M7 13h8M7 17h5"
+              stroke="white"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
           </svg>
           <span className="hidden sm:inline">کتاب‌فروشی</span>
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden flex-1 items-center justify-center gap-1 lg:flex">
+        <nav className="hidden shrink-0 items-center gap-1 lg:flex">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
+              onClick={() => setMenuOpen(false)}
               className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
                 pathname === link.href
                   ? "bg-primary/10 text-primary"
@@ -197,35 +257,21 @@ export function HeaderClient({ isLoggedIn, isAdmin, userName, cartCount }: Heade
           ))}
         </nav>
 
-        {/* Desktop right: search + cart + user */}
-        <div className="flex items-center gap-2 ms-auto">
-          <SearchBar className="hidden w-52 xl:block" />
+        {/* Desktop search — grows to fill available space */}
+        <div className="hidden flex-1 px-4 lg:block">
+          <SearchBar />
+        </div>
 
+        {/* Desktop right: cart + user */}
+        <div className="flex items-center gap-2 ms-auto lg:ms-0">
           {/* Cart */}
-          <Link
-            href="/cart"
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-foreground/80 transition hover:bg-muted hover:text-foreground"
-            aria-label="سبد خرید"
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-              <path
-                d="M2 3h2l2 9h8l2-7H6"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle cx="9" cy="16" r="1.25" fill="currentColor" />
-              <circle cx="14" cy="16" r="1.25" fill="currentColor" />
-            </svg>
-            {cartCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                {cartCount > 99 ? "99+" : cartCount}
-              </span>
-            )}
-          </Link>
+          <CartButton initialCount={cartCount} />
 
-          <UserMenu isLoggedIn={isLoggedIn} isAdmin={isAdmin} userName={userName} />
+          <UserMenu
+            isLoggedIn={isLoggedIn}
+            isAdmin={isAdmin}
+            userName={userName}
+          />
 
           {/* Mobile hamburger */}
           <button
@@ -234,15 +280,7 @@ export function HeaderClient({ isLoggedIn, isAdmin, userName, cartCount }: Heade
             aria-label={menuOpen ? "بستن منو" : "باز کردن منو"}
             aria-expanded={menuOpen}
           >
-            {menuOpen ? (
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-                <path d="M5 5l10 10M15 5l-10 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-                <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            )}
+            {menuOpen ? <X size={20} aria-hidden /> : <Menu size={20} aria-hidden />}
           </button>
         </div>
       </div>
@@ -256,6 +294,7 @@ export function HeaderClient({ isLoggedIn, isAdmin, userName, cartCount }: Heade
               <Link
                 key={link.href}
                 href={link.href}
+                onClick={() => setMenuOpen(false)}
                 className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                   pathname === link.href
                     ? "bg-primary/10 text-primary"

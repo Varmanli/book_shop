@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 export const createGenreSchema = z.object({
-  name: z.string().min(2, "نام ژانر حداقل ۲ کاراکتر باید داشته باشد"),
+  name: z.string().min(2, "نام ژانر الزامی است"),
   slug: z.string().min(1).optional(),
+  image: z.string().optional().nullable(),
 });
 
 export const updateGenreSchema = createGenreSchema.partial();

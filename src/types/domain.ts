@@ -31,7 +31,8 @@ export type BookFilters = {
   maxPrice?: number;
   isFeatured?: boolean;
   isPublished?: boolean;
-  inStock?: boolean;
+  /** true = only available (not sold) copies */
+  available?: boolean;
 };
 
 export type OrderFilters = {

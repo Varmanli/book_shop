@@ -177,7 +177,6 @@ export function FilterSidebar({
   };
 
   const activeCount = [
-    search,
     categorySlug,
     genreId,
     qualityGrade,
@@ -217,54 +216,6 @@ export function FilterSidebar({
       </div>
 
       <div className="space-y-0 divide-y divide-border/60">
-        {/* Sort */}
-        <Section title="مرتب‌سازی">
-          <div className="space-y-1.5">
-            {SORT_OPTIONS.map((opt) => (
-              <label key={opt.value} className="flex cursor-pointer items-center gap-2.5 rounded-lg px-1 py-1.5 text-sm transition hover:bg-muted/60">
-                <input
-                  type="radio"
-                  name="sort"
-                  value={opt.value}
-                  checked={sort === opt.value}
-                  onChange={() => {
-                    setSort(opt.value);
-                    push({ sort: opt.value });
-                  }}
-                  className="h-3.5 w-3.5 accent-primary"
-                />
-                <span className={sort === opt.value ? "font-semibold text-primary" : "text-foreground"}>
-                  {opt.label}
-                </span>
-              </label>
-            ))}
-          </div>
-        </Section>
-
-        {/* Search */}
-        <Section title="جستجو در کتاب‌ها">
-          <div className="relative">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="نام کتاب، نویسنده..."
-              className="w-full rounded-xl border border-border bg-background py-2.5 pe-10 ps-3.5 text-sm placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              aria-hidden
-              className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            >
-              <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.4" />
-              <path d="M10.5 10.5l2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
-          </div>
-        </Section>
-
         {/* Categories */}
         {categories.length > 0 && (
           <Section title="دسته‌بندی">

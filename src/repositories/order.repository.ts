@@ -14,14 +14,18 @@ type CreateOrderData = {
   userId: string;
   subtotal: number;
   shippingCost: number;
+  /** Discount from coupon. total = subtotal + shippingCost − discountAmount */
+  discountAmount: number;
+  couponCode?: string | null;
+  /** total = subtotal + shippingCost − discountAmount (pre-calculated by caller) */
   total: number;
   shippingAddress: ShippingAddressSnapshot;
   notes?: string | null;
   items: {
     bookId: string;
     bookSnapshot: BookSnapshot;
-    quantity: number;
     unitPrice: number;
+    // No quantity — single-copy model, every order item = 1 physical book
   }[];
 };
 
@@ -81,6 +85,8 @@ export async function createOrder(data: CreateOrderData) {
       userId: data.userId,
       subtotal: data.subtotal,
       shippingCost: data.shippingCost,
+      discountAmount: data.discountAmount,
+      couponCode: data.couponCode ?? null,
       total: data.total,
       shippingAddress: data.shippingAddress,
       notes: data.notes,
@@ -92,7 +98,6 @@ export async function createOrder(data: CreateOrderData) {
       orderId: order.id,
       bookId: item.bookId,
       bookSnapshot: item.bookSnapshot,
-      quantity: item.quantity,
       unitPrice: item.unitPrice,
     }))
   );
@@ -125,4 +130,24 @@ export async function getOrderStats() {
     .from(orders)
     .where(eq(orders.status, "PENDING"));
   return { total: Number(total), pending: Number(pending) };
+}
+
+export async function getOrderStatusCounts() {
+  const [pending, paid, processing, shipped, delivered, cancelled] = await Promise.all([
+    db.select({ total: count() }).from(orders).where(eq(orders.status, "PENDING")),
+    db.select({ total: count() }).from(orders).where(eq(orders.status, "PAID")),
+    db.select({ total: count() }).from(orders).where(eq(orders.status, "PROCESSING")),
+    db.select({ total: count() }).from(orders).where(eq(orders.status, "SHIPPED")),
+    db.select({ total: count() }).from(orders).where(eq(orders.status, "DELIVERED")),
+    db.select({ total: count() }).from(orders).where(eq(orders.status, "CANCELLED")),
+  ]);
+
+  return {
+    PENDING: Number(pending[0]?.total ?? 0),
+    PAID: Number(paid[0]?.total ?? 0),
+    PROCESSING: Number(processing[0]?.total ?? 0),
+    SHIPPED: Number(shipped[0]?.total ?? 0),
+    DELIVERED: Number(delivered[0]?.total ?? 0),
+    CANCELLED: Number(cancelled[0]?.total ?? 0),
+  };
 }

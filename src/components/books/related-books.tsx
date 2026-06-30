@@ -20,7 +20,7 @@ export async function RelatedBooks({ bookId, categoryId, limit = 6 }: Props) {
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {related.map((book) => (
-          <ListingBookCard key={book.id} book={book} />
+          <ListingBookCard key={book.id} book={book} isLoggedIn={false} />
         ))}
       </div>
     </section>

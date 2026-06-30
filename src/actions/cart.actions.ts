@@ -5,16 +5,16 @@ import { getCurrentUserId } from "@/lib/session";
 import * as cartService from "@/services/cart.service";
 import { ok, fail, type ApiResponse } from "@/types/api";
 import type { CartItem } from "@/types";
+import { getShippingSettings } from "@/repositories/settings.repository";
+import { CART_SESSION_COOKIE } from "@/config/cart";
 
-const CART_SESSION_COOKIE = "cart_session";
-
-async function getCartOwner() {
+async function getCartOwner(createIfMissing = true) {
   const userId = await getCurrentUserId();
   if (userId) return { userId };
 
   const cookieStore = await cookies();
   let sessionId = cookieStore.get(CART_SESSION_COOKIE)?.value;
-  if (!sessionId) {
+  if (!sessionId && createIfMissing) {
     sessionId = crypto.randomUUID();
     cookieStore.set(CART_SESSION_COOKIE, sessionId, {
       httpOnly: true,
@@ -22,37 +22,35 @@ async function getCartOwner() {
       maxAge: 60 * 60 * 24 * 30,
     });
   }
-  return { sessionId };
+  return sessionId ? { sessionId } : null;
 }
 
 export async function getCartAction() {
-  const owner = await getCartOwner();
+  const owner = await getCartOwner(false);
+  if (!owner) {
+    const { shippingCost, freeShippingThreshold } = await getShippingSettings();
+    return {
+      items: [],
+      itemCount: 0,
+      subtotal: 0,
+      baseShippingCost: shippingCost,
+      shippingCost: 0,
+      freeShippingThreshold: freeShippingThreshold ?? null,
+      total: 0,
+    };
+  }
   return cartService.getCart(owner);
 }
 
-export async function addToCartAction(
-  bookId: string,
-  quantity: number = 1
-): Promise<ApiResponse<CartItem>> {
-  const owner = await getCartOwner();
+/** Single-copy model: no quantity param — one book = one cart slot */
+export async function addToCartAction(bookId: string): Promise<ApiResponse<CartItem>> {
+  const owner = await getCartOwner(true);
+  if (!owner) return fail("خطا در شناسایی سبد خرید");
   try {
-    const item = await cartService.addToCart(owner, bookId, quantity);
+    const item = await cartService.addToCart(owner, bookId);
     return ok(item);
   } catch (error) {
     return fail(error instanceof Error ? error.message : "خطا در افزودن به سبد خرید");
-  }
-}
-
-export async function updateCartItemAction(
-  itemId: string,
-  quantity: number
-): Promise<ApiResponse<null>> {
-  const owner = await getCartOwner();
-  try {
-    await cartService.updateCartItem(owner, itemId, quantity);
-    return ok(null);
-  } catch (error) {
-    return fail(error instanceof Error ? error.message : "خطا در بروزرسانی");
   }
 }
 
@@ -66,7 +64,8 @@ export async function removeFromCartAction(itemId: string): Promise<ApiResponse<
 }
 
 export async function clearCartAction(): Promise<ApiResponse<null>> {
-  const owner = await getCartOwner();
+  const owner = await getCartOwner(false);
+  if (!owner) return ok(null);
   try {
     await cartService.clearCart(owner);
     return ok(null);

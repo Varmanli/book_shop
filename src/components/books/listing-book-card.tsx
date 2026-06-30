@@ -1,150 +1,151 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { Check, Loader2, ShoppingCart } from "lucide-react";
+import { addToCartAction } from "@/actions/cart.actions";
+import { emitCartUpdated } from "@/components/cart/cart-events";
+import { useCart } from "@/components/cart/cart-context";
 import { displayPrice } from "@/lib/currency";
+import { cn } from "@/lib/utils";
 import type { QualityGrade } from "@/types/domain";
 
-const QUALITY_STYLES: Record<QualityGrade, { label: string; cls: string }> = {
-  "Like New": { label: "مثل نو", cls: "bg-emerald-100 text-emerald-700" },
-  "Very Good": { label: "خیلی خوب", cls: "bg-sky-100 text-sky-700" },
-  Good: { label: "خوب", cls: "bg-amber-100 text-amber-700" },
-  Acceptable: { label: "قابل قبول", cls: "bg-rose-100 text-rose-700" },
-};
-
-interface Book {
+type BookCardProps = {
   id: string;
   title: string;
   slug: string;
   author: string;
-  publisher: string;
-  qualityGrade: QualityGrade;
   price: number;
-  stock: number;
-  images: string[];
-  isFeatured: boolean;
-  category?: { name: string; slug: string } | null;
-}
+  isSold: boolean;
+  images?: string[];
+  qualityGrade: QualityGrade;
+  category?: {
+    name: string;
+    slug: string;
+  } | null;
+};
 
-export function ListingBookCard({ book }: { book: Book }) {
-  const q = QUALITY_STYLES[book.qualityGrade];
-  const image =
-    book.images?.[0] ??
-    `https://picsum.photos/seed/book-${book.id.slice(0, 8)}/300/420`;
-  const inStock = book.stock > 0;
+type CartState = "idle" | "loading" | "added";
 
+export function BookCardSkeleton() {
   return (
-    <Link
-      href={`/books/${book.slug}`}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/8"
-    >
-      {/* Image */}
-      <div className="relative aspect-[3/4] overflow-hidden bg-muted/30">
-        <Image
-          src={image}
-          alt={book.title}
-          fill
-          sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,25vw"
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
-          loading="lazy"
-        />
-
-        {/* Featured badge */}
-        {book.isFeatured && (
-          <div className="absolute start-2 top-2 rounded-lg bg-primary/90 px-2 py-0.5 text-[10px] font-bold text-primary-foreground backdrop-blur-sm">
-            ✦ منتخب
-          </div>
-        )}
-
-        {/* Out of stock overlay */}
-        {!inStock && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-            <span className="rounded-xl bg-black/70 px-3 py-1.5 text-xs font-bold text-white">
-              ناموجود
-            </span>
-          </div>
-        )}
-
-        {/* Hover quick-action strip */}
-        <div className="absolute inset-x-0 bottom-0 translate-y-full transition-transform duration-300 group-hover:translate-y-0">
-          <div className="flex bg-foreground/90 backdrop-blur-sm">
-            <button
-              type="button"
-              className="flex flex-1 items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-background transition hover:bg-primary hover:text-primary-foreground"
-              aria-label="افزودن به سبد"
-              onClick={(e) => e.preventDefault()}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-                <path d="M1 1h2l1.5 7h6l1.5-5H4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx="6.5" cy="12" r="1" fill="currentColor" />
-                <circle cx="10.5" cy="12" r="1" fill="currentColor" />
-              </svg>
-              سبد
-            </button>
-            <div className="w-px bg-background/20" />
-            <button
-              type="button"
-              className="flex flex-1 items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-background transition hover:bg-rose-500 hover:text-white"
-              aria-label="افزودن به علاقه‌مندی‌ها"
-              onClick={(e) => e.preventDefault()}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-                <path d="M7 12s-5-3.5-5-7a3.5 3.5 0 017 0 3.5 3.5 0 017 0c0 3.5-5 7-9 7z" stroke="currentColor" strokeWidth="1.3" />
-              </svg>
-              ذخیره
-            </button>
-          </div>
-        </div>
+    <article className="overflow-hidden rounded-2xl border bg-card">
+      <div className="aspect-[3/4] animate-pulse bg-muted" />
+      <div className="space-y-3 p-3">
+        <div className="h-4 w-4/5 animate-pulse rounded bg-muted" />
+        <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
+        <div className="h-5 w-1/2 animate-pulse rounded bg-muted" />
       </div>
-
-      {/* Info */}
-      <div className="flex flex-1 flex-col gap-1.5 p-3.5">
-        {/* Quality + category row */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ${q.cls}`}>
-            {q.label}
-          </span>
-          {book.category && (
-            <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-              {book.category.name}
-            </span>
-          )}
-        </div>
-
-        {/* Title */}
-        <h3 className="line-clamp-2 text-sm font-bold leading-snug text-foreground group-hover:text-primary transition-colors">
-          {book.title}
-        </h3>
-
-        {/* Author */}
-        <p className="text-xs text-muted-foreground line-clamp-1">{book.author}</p>
-
-        {/* Price */}
-        <div className="mt-auto pt-2">
-          {inStock ? (
-            <p className="text-sm font-extrabold text-primary">
-              {displayPrice(book.price)}
-            </p>
-          ) : (
-            <p className="text-sm font-medium text-muted-foreground">ناموجود</p>
-          )}
-        </div>
+      <div className="border-t p-3">
+        <div className="h-10 w-full animate-pulse rounded-xl bg-muted" />
       </div>
-    </Link>
+    </article>
   );
 }
 
-/* ── Skeleton loader ─────────────────────────────────────── */
-export function BookCardSkeleton() {
+export function ListingBookCard({
+  book,
+  isLoggedIn: _isLoggedIn = false,
+}: {
+  book: BookCardProps;
+  isLoggedIn?: boolean;
+}) {
+  void _isLoggedIn;
+  const { items, hasLoaded } = useCart();
+
+  const [cartState, setCartState] = useState<CartState>("idle");
+  const [isPending, startTransition] = useTransition();
+
+  const isAvailable = !book.isSold;
+
+  const isInCart = hasLoaded ? items.some((i) => i.bookId === book.id) : false;
+
+  const image =
+    book.images?.[0] ?? `https://picsum.photos/seed/${book.id}/300/420`;
+
+  function handleAddToCart() {
+    if (!isAvailable || isPending || isInCart) return;
+
+    setCartState("loading");
+
+    startTransition(async () => {
+      const res = await addToCartAction(book.id);
+
+      if (res.success) {
+        setCartState("added");
+        emitCartUpdated();
+        return;
+      }
+
+      setCartState("idle");
+    });
+  }
+
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card">
-      <div className="aspect-[3/4] animate-pulse bg-muted" />
-      <div className="flex flex-col gap-2 p-3.5">
-        <div className="h-3.5 w-16 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-full animate-pulse rounded bg-muted" />
-        <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
-        <div className="mt-2 h-4 w-20 animate-pulse rounded bg-muted" />
+    <article
+      className={cn(
+        "group flex flex-col overflow-hidden rounded-2xl border bg-card transition",
+        isAvailable ? "hover:-translate-y-1 hover:shadow-xl" : "opacity-60",
+      )}
+    >
+      {/* IMAGE */}
+      <Link href={`/books/${book.slug}`}>
+        <div className="relative aspect-3/4 overflow-hidden">
+          <Image
+            src={image}
+            alt={book.title}
+            fill
+            className="object-cover transition group-hover:scale-105"
+          />
+
+          {!isAvailable && <div className="absolute inset-0 bg-black/30" />}
+        </div>
+      </Link>
+
+      {/* CONTENT */}
+      <div className="flex flex-1 flex-col p-3">
+        <h3 className="line-clamp-2 text-sm font-bold">{book.title}</h3>
+
+        <p className="text-xs text-muted-foreground">{book.author}</p>
+
+        <div className="mt-auto pt-3">
+          <p className="text-base font-extrabold text-orange-600">
+            {displayPrice(book.price)}
+          </p>
+        </div>
       </div>
-    </div>
+
+      {/* ACTION */}
+      <div className="border-t p-3">
+        <button
+          onClick={handleAddToCart}
+          disabled={!isAvailable || isPending || isInCart}
+          className={cn(
+            "flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition",
+            "active:scale-[0.98]",
+            isInCart
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              : isAvailable
+                ? "bg-orange-600 text-white hover:bg-orange-700"
+                : "bg-muted text-muted-foreground cursor-not-allowed",
+          )}
+        >
+          {isPending || cartState === "loading" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : isInCart || cartState === "added" ? (
+            <Check className="h-4 w-4" />
+          ) : (
+            <ShoppingCart className="h-4 w-4" />
+          )}
+
+          {isInCart || cartState === "added"
+            ? "در سبد خرید"
+            : isPending || cartState === "loading"
+              ? "در حال افزودن..."
+              : "افزودن به سبد خرید"}
+        </button>
+      </div>
+    </article>
   );
 }

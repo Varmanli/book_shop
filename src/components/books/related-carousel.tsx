@@ -20,7 +20,7 @@ interface Book {
   author: string;
   qualityGrade: string;
   price: number;
-  stock: number;
+  isSold: boolean;
   images: string[];
 }
 
@@ -42,12 +42,12 @@ export function RelatedCarousel({ books }: Props) {
   if (books.length === 0) return null;
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-5">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-extrabold text-foreground">کتاب‌های مشابه</h2>
-          <div className="h-px w-16 bg-border" />
-        </div>
+        <h2 className="flex items-center gap-2.5 text-xl font-extrabold text-foreground">
+          <span className="h-6 w-1 rounded-full bg-primary" />
+          کتاب‌های مشابه
+        </h2>
         <div className="flex gap-2">
           <button
             type="button"
@@ -77,15 +77,15 @@ export function RelatedCarousel({ books }: Props) {
           {books.map((book) => {
             const q = QUALITY_STYLES[book.qualityGrade] ?? { label: book.qualityGrade, cls: "bg-muted text-muted-foreground" };
             const image = book.images?.[0] ?? `https://picsum.photos/seed/book-${book.id.slice(0, 8)}/300/420`;
-            const inStock = book.stock > 0;
+            const inStock = !book.isSold;
 
             return (
               <Link
                 key={book.id}
                 href={`/books/${book.slug}`}
-                className="group relative flex w-[160px] shrink-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg md:w-[180px]"
+                className="group flex w-[160px] shrink-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/30 hover:shadow-xl md:w-[180px]"
               >
-                <div className="relative aspect-[3/4] overflow-hidden bg-muted/30">
+                <div className="relative aspect-[3/4] overflow-hidden bg-muted/40">
                   <Image
                     src={image}
                     alt={book.title}
@@ -93,9 +93,10 @@ export function RelatedCarousel({ books }: Props) {
                     sizes="180px"
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
                   {!inStock && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                      <span className="rounded-xl bg-black/70 px-2 py-1 text-xs font-bold text-white">ناموجود</span>
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-[1px]">
+                      <span className="rounded-lg bg-black/80 px-2.5 py-1 text-xs font-bold text-white">ناموجود</span>
                     </div>
                   )}
                 </div>
@@ -103,12 +104,12 @@ export function RelatedCarousel({ books }: Props) {
                   <span className={`self-start rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${q.cls}`}>
                     {q.label}
                   </span>
-                  <h3 className="line-clamp-2 text-xs font-bold leading-snug text-foreground group-hover:text-primary transition-colors">
+                  <h3 className="line-clamp-2 text-xs font-bold leading-snug text-foreground transition-colors group-hover:text-primary">
                     {book.title}
                   </h3>
-                  <p className="text-[11px] text-muted-foreground line-clamp-1">{book.author}</p>
-                  <p className="mt-auto pt-1 text-xs font-extrabold text-primary">
-                    {inStock ? displayPrice(book.price) : "ناموجود"}
+                  <p className="line-clamp-1 text-[11px] text-muted-foreground">{book.author}</p>
+                  <p className="mt-auto border-t border-border/50 pt-2 text-xs font-extrabold text-primary">
+                    {inStock ? displayPrice(book.price) : <span className="text-muted-foreground font-medium">ناموجود</span>}
                   </p>
                 </div>
               </Link>

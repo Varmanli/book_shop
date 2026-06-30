@@ -34,4 +34,8 @@ export const CACHE_TAGS = {
   reviews: "reviews",
   reviewsAdmin: "reviews-admin",
   reviewsByBook: (bookId: string) => `reviews-book-${bookId}`,
+
+  siteContent: "site-content",
+  aboutPage: "about-page",
+  contactPage: "contact-page",
 } as const;

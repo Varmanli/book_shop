@@ -23,6 +23,16 @@ export const updateSettingsSchema = z.object({
       twitter: z.string().optional(),
     })
     .optional(),
+  /** Flat shipping cost applied to every order (in smallest currency unit, e.g. Rials). */
+  shippingCost: z.coerce.number().int().min(0).optional(),
+  /**
+   * When set, orders whose subtotal reaches this amount get free shipping.
+   * Pass an empty string / blank to clear (set to null = disabled).
+   */
+  freeShippingThreshold: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+    z.number().int().min(0).nullable().optional()
+  ),
 });
 
 export type HeroSlide = z.infer<typeof heroSlideSchema>;

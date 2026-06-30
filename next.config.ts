@@ -17,10 +17,19 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "picsum.photos",
       },
+      // Arvan Object Storage
+      {
+        protocol: "https",
+        hostname: "*.arvanstorage.ir",
+      },
+      {
+        protocol: "https",
+        hostname: "*.arvancloud.ir",
+      },
     ],
   },
 
-  serverExternalPackages: ["postgres"],
+  serverExternalPackages: ["postgres", "sharp", "@aws-sdk/client-s3"],
 };
 
 export default nextConfig;

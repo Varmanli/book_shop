@@ -150,6 +150,72 @@
   }
 }
 
+/* ── Blog/Post article body ──────────────────────────────── */
+.post-article .prose-content h2 {
+  @apply mt-8 mb-3 text-xl font-extrabold text-foreground;
+}
+.post-article .prose-content h3 {
+  @apply mt-6 mb-2 text-lg font-bold text-foreground;
+}
+.post-article .prose-content p {
+  @apply mb-4 text-base leading-8 text-foreground/90;
+}
+.post-article .prose-content strong {
+  @apply font-bold text-foreground;
+}
+.post-article .prose-content em {
+  @apply italic;
+}
+.post-article .prose-content u {
+  @apply underline;
+}
+.post-article .prose-content blockquote {
+  @apply my-5 border-r-4 border-primary/50 bg-muted/40 py-3 pr-4 pl-3 text-sm italic text-muted-foreground rounded-l-xl;
+}
+.post-article .prose-content ul {
+  @apply mb-4 space-y-1 pe-5;
+  list-style-type: disc;
+}
+.post-article .prose-content ol {
+  @apply mb-4 space-y-1 pe-5;
+  list-style-type: decimal;
+}
+.post-article .prose-content li {
+  @apply text-base leading-7 text-foreground/90;
+}
+.post-article .prose-content a {
+  @apply text-primary underline hover:text-primary/80;
+}
+
+/* TipTap editor prose styles (inside the editor area) */
+.ProseMirror h2 {
+  @apply mt-6 mb-2 text-xl font-extrabold text-foreground;
+}
+.ProseMirror h3 {
+  @apply mt-4 mb-1.5 text-lg font-bold text-foreground;
+}
+.ProseMirror p {
+  @apply mb-3 leading-7;
+}
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  @apply pointer-events-none float-right text-muted-foreground;
+}
+.ProseMirror blockquote {
+  @apply my-3 border-r-4 border-primary/40 bg-muted/30 py-2 pr-3 text-sm italic text-muted-foreground rounded-l-lg;
+}
+.ProseMirror ul {
+  @apply mb-3 space-y-0.5 pe-5;
+  list-style-type: disc;
+}
+.ProseMirror ol {
+  @apply mb-3 space-y-0.5 pe-5;
+  list-style-type: decimal;
+}
+.ProseMirror li {
+  @apply leading-6;
+}
+
 /* ── Auth page animations ────────────────────────────────── */
 @keyframes auth-gradient {
   0%   { background-position: 0% 50%; }
@@ -194,6 +260,12 @@
   50%       { transform: translateY(-20px) translateX(10px) scale(1.2); opacity: 1; }
 }
 
+@keyframes field-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(4px); }
+  75% { transform: translateX(-4px); }
+}
+
 .auth-card-animate {
   animation: auth-card-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -219,4 +291,8 @@
 }
 .btn-shimmer:hover {
   animation: shimmer 1.6s linear infinite;
+}
+
+.field-shake {
+  animation: field-shake 0.28s ease-in-out;
 }

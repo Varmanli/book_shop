@@ -15,7 +15,10 @@ export const categories = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [index("categories_slug_idx").on(table.slug)]
+  (table) => [
+    index("categories_slug_idx").on(table.slug),
+    index("categories_name_idx").on(table.name),
+  ]
 );
 
 export const categoriesRelations = relations(categories, ({ many }) => ({

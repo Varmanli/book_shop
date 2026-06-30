@@ -1,9 +1,34 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { ApiResponse } from "@/types/api";
+import {
+  ImageUploader,
+  type UploadedFile,
+} from "@/components/ui/image-uploader";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { cn } from "@/lib/utils";
+
+// ─── Persian helpers ────────────────────────────────────────────────────────
+
+function toPersianDigits(value: string | number): string {
+  return String(value).replace(/[0-9]/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]);
+}
+
+function normalizePersianDigits(value: string): string {
+  return value.replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)));
+}
+
+function formatToman(raw: string): string {
+  const normalized = normalizePersianDigits(raw).replace(/\D/g, "");
+  if (!normalized) return "";
+  return toPersianDigits(Number(normalized).toLocaleString("en-US"));
+}
+
+// ─── Static option sets ─────────────────────────────────────────────────────
 
 const QUALITY_OPTIONS = [
   { value: "Like New", label: "مثل نو" },
@@ -12,6 +37,14 @@ const QUALITY_OPTIONS = [
   { value: "Acceptable", label: "قابل قبول" },
 ];
 
+const LANGUAGE_OPTIONS = [
+  { value: "Persian", label: "فارسی" },
+  { value: "Arabic", label: "عربی" },
+  { value: "English", label: "انگلیسی" },
+];
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
 type Book = {
   id: string;
   title: string;
@@ -19,10 +52,10 @@ type Book = {
   translator?: string | null;
   publisher: string;
   isbn?: string | null;
-  description: string;
+  description?: string | null;
   categoryId: string;
   qualityGrade: string;
-  stock: number;
+  isSold: boolean;
   price: number;
   images: string[];
   publishedYear?: number | null;
@@ -44,56 +77,187 @@ interface Props {
   redirectTo?: string;
 }
 
-function Field({
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function FormSection({
+  title,
+  children,
+  className,
+}: {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        "rounded-2xl border border-border bg-card p-5 shadow-sm",
+        className,
+      )}
+    >
+      <h2 className="mb-5 border-b border-border/60 pb-3 text-sm font-extrabold tracking-wide text-foreground">
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function FormField({
   label,
-  name,
   required,
-  defaultValue,
   error,
-  placeholder,
-  type = "text",
-  dir,
   hint,
+  children,
 }: {
   label: string;
-  name: string;
   required?: boolean;
-  defaultValue?: string | number | null;
   error?: string;
-  placeholder?: string;
-  type?: string;
-  dir?: string;
   hint?: string;
+  children: React.ReactNode;
 }) {
   return (
     <div className="space-y-1.5">
       <label className="block text-sm font-semibold text-foreground">
         {label} {required && <span className="text-destructive">*</span>}
       </label>
-      <input
-        type={type}
-        name={name}
-        required={required}
-        defaultValue={defaultValue ?? ""}
-        placeholder={placeholder}
-        dir={dir}
-        className={`w-full rounded-xl border px-3 py-2.5 text-sm transition focus:outline-none focus:ring-2 ${
-          error
-            ? "border-destructive bg-destructive/5 focus:ring-destructive/20"
-            : "border-border bg-background focus:border-primary/60 focus:ring-primary/20"
-        }`}
-      />
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {children}
+      {hint && !error && (
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      )}
+      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
     </div>
   );
 }
 
+function TextInput({
+  name,
+  required,
+  defaultValue,
+  placeholder,
+  type = "text",
+  dir,
+  error,
+  autoFocus,
+  inputMode,
+}: {
+  name: string;
+  required?: boolean;
+  defaultValue?: string | number | null;
+  placeholder?: string;
+  type?: string;
+  dir?: string;
+  error?: boolean;
+  autoFocus?: boolean;
+  inputMode?: React.InputHTMLAttributes<HTMLInputElement>["inputMode"];
+}) {
+  return (
+    <input
+      type={type}
+      name={name}
+      required={required}
+      defaultValue={defaultValue ?? ""}
+      placeholder={placeholder}
+      dir={dir}
+      autoFocus={autoFocus}
+      inputMode={inputMode}
+      className={cn(
+        "h-11 w-full rounded-2xl border bg-background px-4 text-sm outline-none transition focus:ring-4",
+        error
+          ? "border-destructive/50 bg-destructive/5 focus:border-destructive/40 focus:ring-destructive/10"
+          : "border-border/70 hover:border-primary/25 focus:border-primary/40 focus:ring-primary/10",
+      )}
+    />
+  );
+}
+
+function PriceInput({
+  name,
+  defaultValue,
+  error,
+}: {
+  name: string;
+  defaultValue?: number | null;
+  error?: string;
+}) {
+  const [raw, setRaw] = useState(defaultValue ? String(defaultValue) : "");
+  const preview = raw ? `${formatToman(raw)} تومان` : "";
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const normalized = normalizePersianDigits(e.target.value).replace(
+      /\D/g,
+      "",
+    );
+    setRaw(normalized);
+  }
+
+  return (
+    <div className="space-y-2">
+      <input type="hidden" name={name} value={raw} />
+
+      <div
+        className={cn(
+          "flex h-11 w-full items-center overflow-hidden rounded-2xl border bg-background transition focus-within:ring-4",
+          error
+            ? "border-destructive/50 bg-destructive/5 focus-within:border-destructive/40 focus-within:ring-destructive/10"
+            : "border-border/70 hover:border-primary/25 focus-within:border-primary/40 focus-within:ring-primary/10",
+        )}
+      >
+        <input
+          type="text"
+          inputMode="numeric"
+          dir="ltr"
+          value={raw ? toPersianDigits(raw) : ""}
+          onChange={handleChange}
+          placeholder="مثلاً ۲۵۰۰۰۰"
+          className="h-full min-w-0 flex-1 border-0 bg-transparent px-4 text-left text-sm outline-none"
+        />
+
+        <div className="flex h-full shrink-0 items-center border-s border-border/70 bg-muted/40 px-4 text-xs font-medium text-muted-foreground">
+          تومان
+        </div>
+      </div>
+
+      {preview ? (
+        <p className="text-xs font-semibold text-primary">{preview}</p>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          قیمت را به تومان وارد کنید
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Main form ───────────────────────────────────────────────────────────────
+
 type ActionState = ApiResponse<Book> | { success: false; error: "" };
 
-export function BookForm({ book, categories, genres, selectedGenreIds = [], action, redirectTo = "/admin/books" }: Props) {
+export function BookForm({
+  book,
+  categories,
+  genres,
+  selectedGenreIds = [],
+  action,
+  redirectTo = "/admin/books",
+}: Props) {
   const router = useRouter();
-  const [state, dispatch, pending] = useActionState(action, { success: false as const, error: "" });
+  const [state, dispatch, pending] = useActionState<ActionState, FormData>(
+    action as (prev: ActionState, fd: FormData) => Promise<ActionState>,
+    { success: false, error: "" },
+  );
+
+  const initialImages: (UploadedFile | null)[] = [0, 1, 2].map((i) => {
+    const url = book?.images?.[i];
+    return url ? { url } : null;
+  });
+  const [images, setImages] = useState<(UploadedFile | null)[]>(initialImages);
+
+  const [categoryId, setCategoryId] = useState(book?.categoryId ?? "");
+  const [qualityGrade, setQualityGrade] = useState(
+    book?.qualityGrade ?? "Good",
+  );
+  const [language, setLanguage] = useState(book?.language ?? "Persian");
 
   useEffect(() => {
     if (state.success) {
@@ -104,173 +268,285 @@ export function BookForm({ book, categories, genres, selectedGenreIds = [], acti
     if (!state.success && (state as { error?: string }).error) {
       toast.error((state as { error: string }).error);
     }
-  }, [state]);
+  }, [state, book, redirectTo, router]);
 
-  const fe = (!state.success ? (state as { fieldErrors?: Record<string, string[]> }).fieldErrors : undefined) ?? {} as Record<string, string[]>;
+  const fe =
+    (!state.success
+      ? (state as { fieldErrors?: Record<string, string[]> }).fieldErrors
+      : undefined) ?? ({} as Record<string, string[]>);
+
+  const categoryOptions = categories.map((c) => ({
+    value: c.id,
+    label: c.name,
+  }));
+
+  const IMAGE_LABELS = [
+    "تصویر اصلی",
+    "تصویر دوم (اختیاری)",
+    "تصویر سوم (اختیاری)",
+  ];
+
+  const formError =
+    !state.success && (state as { error?: string }).error
+      ? (state as { error: string }).error
+      : null;
+
+  const hasFieldErrors =
+    !state.success &&
+    (state as { fieldErrors?: Record<string, string[]> }).fieldErrors &&
+    Object.keys(
+      (state as { fieldErrors?: Record<string, string[]> }).fieldErrors ?? {},
+    ).length > 0;
 
   return (
-    <form action={dispatch} className="space-y-6">
+    <form action={dispatch} className="space-y-6 pb-28 lg:pb-0">
+      {/* Form-level error banner */}
+      {(formError || hasFieldErrors) && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+          {formError ||
+            "امکان ثبت کتاب وجود ندارد. لطفاً خطاهای فرم را بررسی کنید."}
+        </div>
+      )}
+
+      {/* Hidden controlled values */}
+      <input type="hidden" name="categoryId" value={categoryId} />
+      <input type="hidden" name="qualityGrade" value={qualityGrade} />
+      <input type="hidden" name="language" value={language} />
+      {images.map((img, i) => (
+        <input key={i} type="hidden" name="images" value={img?.url ?? ""} />
+      ))}
+
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Main fields */}
+        {/* ── Main column ── */}
         <div className="space-y-5 lg:col-span-2">
-          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="mb-4 text-sm font-bold text-foreground">اطلاعات اصلی</h2>
+          <FormSection title="اطلاعات اصلی کتاب">
             <div className="space-y-4">
-              <Field label="عنوان کتاب" name="title" required defaultValue={book?.title} error={fe.title?.[0]} />
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="نویسنده" name="author" required defaultValue={book?.author} error={fe.author?.[0]} />
-                <Field label="مترجم" name="translator" defaultValue={book?.translator} placeholder="اختیاری" />
+              <FormField label="عنوان کتاب" required error={fe.title?.[0]}>
+                <TextInput
+                  name="title"
+                  required
+                  defaultValue={book?.title}
+                  placeholder="عنوان کتاب را وارد کنید"
+                  error={!!fe.title?.[0]}
+                  autoFocus
+                />
+              </FormField>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField label="نویسنده" required error={fe.author?.[0]}>
+                  <TextInput
+                    name="author"
+                    required
+                    defaultValue={book?.author}
+                    placeholder="نام نویسنده"
+                    error={!!fe.author?.[0]}
+                  />
+                </FormField>
+                <FormField label="مترجم" hint="در صورت وجود وارد کنید">
+                  <TextInput
+                    name="translator"
+                    defaultValue={book?.translator}
+                    placeholder="نام مترجم (اختیاری)"
+                  />
+                </FormField>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="ناشر" name="publisher" required defaultValue={book?.publisher} error={fe.publisher?.[0]} />
-                <Field label="شابک (ISBN)" name="isbn" defaultValue={book?.isbn} placeholder="اختیاری" dir="ltr" />
-              </div>
-              <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-foreground">
-                  توضیحات <span className="text-destructive">*</span>
-                </label>
+
+              <FormField label="ناشر" required error={fe.publisher?.[0]}>
+                <TextInput
+                  name="publisher"
+                  required
+                  defaultValue={book?.publisher}
+                  placeholder="نام ناشر"
+                  error={!!fe.publisher?.[0]}
+                />
+              </FormField>
+
+              <FormField
+                label="توضیحات"
+                error={fe.description?.[0]}
+                hint={
+                  !fe.description?.[0]
+                    ? "توضیحات کتاب اختیاری است، اما می‌تواند به فروش بهتر کمک کند."
+                    : undefined
+                }
+              >
                 <textarea
                   name="description"
-                  required
-                  rows={4}
-                  defaultValue={book?.description}
-                  className={`w-full rounded-xl border px-3 py-2.5 text-sm transition focus:outline-none focus:ring-2 resize-none ${
-                    fe.description ? "border-destructive focus:ring-destructive/20" : "border-border bg-background focus:border-primary/60 focus:ring-primary/20"
-                  }`}
+                  rows={5}
+                  defaultValue={book?.description ?? ""}
+                  placeholder="توضیحاتی درباره کتاب بنویسید... (اختیاری)"
+                  className={cn(
+                    "w-full resize-none rounded-2xl border bg-background px-4 py-3 text-sm outline-none transition focus:ring-4",
+                    fe.description
+                      ? "border-destructive/50 bg-destructive/5 focus:border-destructive/40 focus:ring-destructive/10"
+                      : "border-border/70 hover:border-primary/25 focus:border-primary/40 focus:ring-primary/10",
+                  )}
                 />
-                {fe.description && <p className="text-xs text-destructive">{fe.description[0]}</p>}
-              </div>
+              </FormField>
             </div>
-          </section>
-
-          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="mb-4 text-sm font-bold text-foreground">جزئیات کتاب</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="سال انتشار" name="publishedYear" type="number" defaultValue={book?.publishedYear} />
-              <Field label="تعداد صفحه" name="pageCount" type="number" defaultValue={book?.pageCount} />
-              <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-foreground">زبان</label>
-                <select
-                  name="language"
-                  defaultValue={book?.language ?? "Persian"}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus:outline-none"
-                >
-                  <option value="Persian">فارسی</option>
-                  <option value="Arabic">عربی</option>
-                  <option value="English">انگلیسی</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-foreground">
-                  درجه کیفیت <span className="text-destructive">*</span>
-                </label>
-                <select
-                  name="qualityGrade"
-                  required
-                  defaultValue={book?.qualityGrade ?? "Good"}
-                  className={`w-full rounded-xl border bg-background px-3 py-2.5 text-sm focus:outline-none ${fe.qualityGrade ? "border-destructive" : "border-border"}`}
-                >
-                  {QUALITY_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                {fe.qualityGrade && <p className="text-xs text-destructive">{fe.qualityGrade[0]}</p>}
-              </div>
+          </FormSection>{" "}
+          <FormSection title="توضیحات و مشخصات">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField label="سال انتشار" hint="مثلاً ۱۴۰۰">
+                <TextInput
+                  name="publishedYear"
+                  type="number"
+                  defaultValue={book?.publishedYear}
+                  placeholder="سال انتشار"
+                  inputMode="numeric"
+                />
+              </FormField>
+              <FormField label="تعداد صفحه">
+                <TextInput
+                  name="pageCount"
+                  type="number"
+                  defaultValue={book?.pageCount}
+                  placeholder="تعداد صفحات"
+                  inputMode="numeric"
+                />
+              </FormField>
+              <FormField label="شابک (ISBN)" hint="اختیاری">
+                <TextInput
+                  name="isbn"
+                  defaultValue={book?.isbn}
+                  placeholder="978-..."
+                  dir="ltr"
+                />
+              </FormField>
+              <FormField label="زبان">
+                <SearchableSelect
+                  value={language}
+                  onChange={setLanguage}
+                  options={LANGUAGE_OPTIONS}
+                  placeholder="زبان کتاب"
+                  searchPlaceholder="جستجوی زبان..."
+                  emptyText="زبانی یافت نشد"
+                />
+              </FormField>
             </div>
-          </section>
-
-          {/* Images */}
-          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="mb-4 text-sm font-bold text-foreground">تصاویر کتاب</h2>
-            <div className="space-y-3">
+          </FormSection>
+          <FormSection title="تصاویر کتاب">
+            <div className="grid gap-4 sm:grid-cols-3">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="space-y-1.5">
-                  <label className="block text-xs font-medium text-muted-foreground">
-                    تصویر {i + 1} {i === 0 ? "(اصلی)" : "(اختیاری)"}
-                  </label>
-                  <input
-                    type="url"
-                    name="images"
-                    defaultValue={book?.images?.[i] ?? ""}
-                    placeholder="https://..."
-                    dir="ltr"
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
+                <ImageUploader
+                  key={i}
+                  label={IMAGE_LABELS[i]}
+                  context="book"
+                  aspectRatio="cover"
+                  value={images[i]}
+                  required={i === 0}
+                  onChange={(file) => {
+                    setImages((prev) => {
+                      const next = [...prev];
+                      next[i] = file;
+                      return next;
+                    });
+                  }}
+                />
               ))}
             </div>
-          </section>
+            {fe.images && (
+              <p className="mt-2 text-xs font-medium text-destructive">
+                {fe.images[0]}
+              </p>
+            )}
+          </FormSection>
         </div>
 
-        {/* Sidebar */}
+        {/* ── Sidebar ── */}
         <div className="space-y-4">
-          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="mb-4 text-sm font-bold text-foreground">قیمت و موجودی</h2>
-            <div className="space-y-4">
-              <Field
-                label="قیمت (تومان)"
+          <FormSection title="قیمت کتاب را وارد کنید.">
+            <FormField label="قیمت" required error={fe.price?.[0]}>
+              <PriceInput
                 name="price"
-                type="number"
-                required
                 defaultValue={book?.price}
                 error={fe.price?.[0]}
-                dir="ltr"
               />
-              <Field
-                label="موجودی (عدد)"
-                name="stock"
-                type="number"
-                required
-                defaultValue={book?.stock ?? 0}
-                error={fe.stock?.[0]}
-                dir="ltr"
-              />
-            </div>
-          </section>
+            </FormField>
+          </FormSection>
 
-          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="mb-4 text-sm font-bold text-foreground">دسته‌بندی</h2>
-            <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-foreground">
-                دسته‌بندی <span className="text-destructive">*</span>
-              </label>
-              <select
-                name="categoryId"
-                required
-                defaultValue={book?.categoryId ?? ""}
-                className={`w-full rounded-xl border bg-background px-3 py-2.5 text-sm focus:outline-none ${fe.categoryId ? "border-destructive" : "border-border"}`}
+          <FormSection title="وضعیت کتاب">
+            <FormField label="درجه کیفیت" required error={fe.qualityGrade?.[0]}>
+              <SearchableSelect
+                value={qualityGrade}
+                onChange={setQualityGrade}
+                options={QUALITY_OPTIONS}
+                placeholder="درجه کیفیت"
+                searchPlaceholder="جستجو..."
+                emptyText="موردی یافت نشد"
+                error={fe.qualityGrade?.[0]}
+              />
+            </FormField>
+
+            <div className="mt-4 space-y-3">
+              <label
+                className={cn(
+                  "flex cursor-pointer items-center gap-3 rounded-2xl border p-3.5 transition hover:bg-muted/30",
+                  "has-checked:border-rose-300 has-checked:bg-rose-50",
+                )}
               >
-                <option value="">انتخاب دسته‌بندی</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                <input
+                  type="checkbox"
+                  name="isSold"
+                  value="true"
+                  defaultChecked={book?.isSold ?? false}
+                  className="h-4 w-4 accent-rose-500"
+                />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    فروخته شده
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    این نسخه دیگر موجود نیست
+                  </p>
+                </div>
+              </label>
+            </div>
+          </FormSection>
+
+          <FormSection title="دسته‌بندی">
+            <FormField label="دسته‌بندی" required error={fe.categoryId?.[0]}>
+              <SearchableSelect
+                value={categoryId}
+                onChange={setCategoryId}
+                options={categoryOptions}
+                placeholder="انتخاب دسته‌بندی"
+                searchPlaceholder="جستجوی دسته‌بندی..."
+                emptyText="دسته‌بندی یافت نشد"
+                error={fe.categoryId?.[0]}
+              />
+            </FormField>
+          </FormSection>
+
+          <FormSection title="ژانرها">
+            {genres.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                ژانری تعریف نشده است
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {genres.map((genre) => (
+                  <label
+                    key={genre.id}
+                    className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium transition hover:border-primary/40 hover:bg-primary/5 has-checked:border-primary/50 has-checked:bg-primary/10 has-checked:text-primary"
+                  >
+                    <input
+                      type="checkbox"
+                      name="genreIds"
+                      value={genre.id}
+                      defaultChecked={selectedGenreIds.includes(genre.id)}
+                      className="sr-only"
+                    />
+                    {genre.name}
+                  </label>
                 ))}
-              </select>
-              {fe.categoryId && <p className="text-xs text-destructive">{fe.categoryId[0]}</p>}
-            </div>
-          </section>
+              </div>
+            )}
+          </FormSection>
 
-          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="mb-4 text-sm font-bold text-foreground">ژانرها</h2>
-            <div className="flex flex-wrap gap-2">
-              {genres.map((genre) => (
-                <label key={genre.id} className="flex cursor-pointer items-center gap-1.5">
-                  <input
-                    type="checkbox"
-                    name="genreIds"
-                    value={genre.id}
-                    defaultChecked={selectedGenreIds.includes(genre.id)}
-                    className="h-3.5 w-3.5 accent-primary"
-                  />
-                  <span className="text-xs text-foreground">{genre.name}</span>
-                </label>
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="mb-4 text-sm font-bold text-foreground">انتشار</h2>
+          <FormSection title="تنظیمات نمایش">
             <div className="space-y-3">
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border p-3 hover:bg-muted/30 has-[:checked]:border-primary/30 has-[:checked]:bg-primary/5">
+              <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-border p-3.5 hover:bg-muted/30 has-checked:border-primary/30 has-checked:bg-primary/5">
                 <input
                   type="checkbox"
                   name="isPublished"
@@ -279,49 +555,95 @@ export function BookForm({ book, categories, genres, selectedGenreIds = [], acti
                   className="h-4 w-4 accent-primary"
                 />
                 <div>
-                  <p className="text-sm font-semibold text-foreground">منتشر شده</p>
-                  <p className="text-xs text-muted-foreground">کتاب در سایت نمایش داده می‌شود</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    منتشر شده
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    در سایت نمایش داده می‌شود
+                  </p>
                 </div>
               </label>
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border p-3 hover:bg-muted/30 has-[:checked]:border-amber-300 has-[:checked]:bg-amber-50">
+              <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-border p-3.5 hover:bg-muted/30 has-checked:border-amber-300 has-checked:bg-amber-50">
                 <input
                   type="checkbox"
                   name="isFeatured"
                   value="true"
                   defaultChecked={book?.isFeatured ?? false}
-                  className="h-4 w-4 accent-primary"
+                  className="h-4 w-4 accent-amber-500"
                 />
                 <div>
-                  <p className="text-sm font-semibold text-foreground">کتاب ویژه</p>
-                  <p className="text-xs text-muted-foreground">در بخش کتاب‌های ویژه نمایش یابد</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    کتاب ویژه
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    در بخش ویژه‌ها نمایش یابد
+                  </p>
                 </div>
               </label>
             </div>
-          </section>
+          </FormSection>
 
-          {/* Submit */}
-          <div className="space-y-2">
-            {!state.success && (state as { error?: string }).error && (
-              <p className="rounded-lg bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
-                {(state as { error: string }).error}
-              </p>
-            )}
-            <button
-              type="submit"
-              disabled={pending}
-              className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-            >
-              {pending ? "در حال ذخیره..." : book ? "ذخیره تغییرات" : "افزودن کتاب"}
-            </button>
-            <a
-              href="/admin/books"
-              className="block w-full rounded-xl border border-border py-2.5 text-center text-sm font-medium text-foreground hover:bg-muted"
-            >
-              انصراف
-            </a>
+          {/* Submit – desktop */}
+          <div className="hidden space-y-2 lg:block">
+            <SubmitArea state={state} pending={pending} isEdit={!!book} />
           </div>
         </div>
       </div>
+
+      {/* Submit – mobile sticky */}
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/90 px-4 py-3 backdrop-blur-sm lg:hidden">
+        <SubmitArea state={state} pending={pending} isEdit={!!book} compact />
+      </div>
     </form>
+  );
+}
+
+function SubmitArea({
+  state,
+  pending,
+  isEdit,
+  compact,
+}: {
+  state: ActionState;
+  pending: boolean;
+  isEdit: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "space-y-2",
+        compact && "flex items-center gap-3 space-y-0",
+      )}
+    >
+      {!state.success && (state as { error?: string }).error && (
+        <p
+          className={cn(
+            "rounded-xl bg-destructive/10 px-4 py-2.5 text-sm text-destructive",
+            compact && "hidden",
+          )}
+        >
+          {(state as { error: string }).error}
+        </p>
+      )}
+      <button
+        type="submit"
+        disabled={pending}
+        className={cn(
+          "rounded-2xl bg-primary text-sm font-bold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60",
+          compact ? "flex-1 py-2.5" : "w-full py-3",
+        )}
+      >
+        {pending ? "در حال ثبت کتاب..." : isEdit ? "ذخیره تغییرات" : "ثبت کتاب"}
+      </button>
+      {!compact && (
+        <Link
+          href="/admin/books"
+          className="block w-full rounded-2xl border border-border py-2.5 text-center text-sm font-medium text-foreground hover:bg-muted"
+        >
+          انصراف
+        </Link>
+      )}
+    </div>
   );
 }

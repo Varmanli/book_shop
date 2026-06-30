@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { findCartItems } from "@/repositories/cart.repository";
 import { cookies } from "next/headers";
 import { HeaderClient } from "./header-client";
+import { CART_SESSION_COOKIE } from "@/config/cart";
 
 export async function Header() {
   const session = await auth();
@@ -13,13 +14,13 @@ export async function Header() {
   try {
     if (isLoggedIn && session.user?.id) {
       const items = await findCartItems({ userId: session.user.id });
-      cartCount = items.reduce((sum, i) => sum + i.quantity, 0);
+      cartCount = items.length;
     } else {
       const cookieStore = await cookies();
-      const sessionId = cookieStore.get("sessionId")?.value;
+      const sessionId = cookieStore.get(CART_SESSION_COOKIE)?.value;
       if (sessionId) {
         const items = await findCartItems({ sessionId });
-        cartCount = items.reduce((sum, i) => sum + i.quantity, 0);
+        cartCount = items.length;
       }
     }
   } catch {

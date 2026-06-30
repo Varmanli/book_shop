@@ -40,7 +40,8 @@ export const books = pgTable(
       .notNull()
       .references(() => categories.id, { onDelete: "restrict" }),
     qualityGrade: qualityGradeEnum("quality_grade").notNull(),
-    stock: integer("stock").default(0).notNull(),
+    // Single-copy model: books are either available or sold, no numeric quantity
+    isSold: boolean("is_sold").default(false).notNull(),
     price: integer("price").notNull(),
     images: text("images").array().default([]).notNull(),
     publishedYear: integer("published_year"),
@@ -56,7 +57,10 @@ export const books = pgTable(
     index("books_category_idx").on(table.categoryId),
     index("books_is_featured_idx").on(table.isFeatured),
     index("books_is_published_idx").on(table.isPublished),
+    index("books_is_sold_idx").on(table.isSold),
     index("books_created_at_idx").on(table.createdAt),
+    index("books_title_idx").on(table.title),
+    index("books_author_idx").on(table.author),
   ]
 );
 

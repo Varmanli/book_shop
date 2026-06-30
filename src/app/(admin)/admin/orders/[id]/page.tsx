@@ -84,7 +84,7 @@ async function OrderContent({ params }: { params: Params }) {
                     </div>
                     <div className="text-end">
                       <p className="text-sm font-bold">{item.unitPrice.toLocaleString("fa-IR")} ت</p>
-                      <p className="text-xs text-muted-foreground">×{item.quantity}</p>
+                      <p className="text-xs text-muted-foreground">یک نسخه فیزیکی</p>
                     </div>
                   </li>
                 );
@@ -106,6 +106,16 @@ async function OrderContent({ params }: { params: Params }) {
                 <dt className="text-muted-foreground">هزینه ارسال</dt>
                 <dd>{order.shippingCost === 0 ? "رایگان" : `${order.shippingCost.toLocaleString("fa-IR")} ت`}</dd>
               </div>
+              {(order.discountAmount ?? 0) > 0 && (
+                <div className="flex justify-between">
+                  <dt className="text-emerald-600">
+                    تخفیف {order.couponCode && <code className="text-xs">({order.couponCode})</code>}
+                  </dt>
+                  <dd className="font-semibold text-emerald-600">
+                    −{order.discountAmount!.toLocaleString("fa-IR")} ت
+                  </dd>
+                </div>
+              )}
               <div className="flex justify-between border-t border-border pt-2">
                 <dt className="font-bold">جمع کل</dt>
                 <dd className="font-extrabold text-primary">{order.total.toLocaleString("fa-IR")} ت</dd>
