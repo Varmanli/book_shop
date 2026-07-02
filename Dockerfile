@@ -27,7 +27,7 @@ ENV DATABASE_URL=$DATABASE_URL
 ENV AUTH_SECRET=$AUTH_SECRET
 ENV NODE_ENV=production
 
-RUN npx tsc --noEmit
+RUN npm run typecheck
 RUN npm run db:push
 RUN npm run build
 
