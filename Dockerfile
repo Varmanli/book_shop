@@ -14,21 +14,17 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# NEXT_PUBLIC_* values are inlined at build time — Coolify must provide these
-# as build-time variables. DATABASE_URL is also read at build time by pages
-# that import the DB client at module scope, and by the migration below — it must
-# be a real, reachable connection string at build time (Coolify's Docker
-# build must be able to reach the database over the network).
+# The builder uses a dedicated, non-production read-only database for Next.js
+# data prerendering. Migrations run separately at deployment time with the
+# runtime production database environment.
 ARG NEXT_PUBLIC_APP_URL
-ARG DATABASE_URL
-ARG AUTH_SECRET
+ARG BUILD_DATABASE_URL
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
-ENV DATABASE_URL=$DATABASE_URL
-ENV AUTH_SECRET=$AUTH_SECRET
+ENV DATABASE_URL=$BUILD_DATABASE_URL
+ENV AUTH_SECRET=build-time-placeholder-secret-that-is-never-deployed
 ENV NODE_ENV=production
 
 RUN npm run typecheck
-RUN npm run db:migrate
 RUN npm run build
 
 # ---- runner: minimal production image --------------------------------------
@@ -43,13 +39,14 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrate.mjs ./scripts/migrate.mjs
 
 USER nextjs
 EXPOSE 3006
 
 # Real secrets (DATABASE_URL, AUTH_SECRET, S3_*, UPLOADTHING_TOKEN,
 # AUTH_GOOGLE_SECRET) must be provided as runtime environment variables in
-# Coolify — never baked into this image. The schema is applied during the
-# builder stage (above, via the reviewed Drizzle migration); no db:seed or
-# other destructive command runs here.
+# Coolify — never baked into this image. Run `node scripts/migrate.mjs` as the
+# Coolify pre-deployment command; no db:seed or destructive schema sync runs.
 CMD ["node", "server.js"]
