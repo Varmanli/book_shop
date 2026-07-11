@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { db } from "@/db";
-import { books } from "@/db/schema";
-import { ilike, or, eq, and } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
+  const [{ auth }, { db }, { books }, { ilike, or, eq, and }] = await Promise.all([
+    import("@/lib/auth"),
+    import("@/db"),
+    import("@/db/schema"),
+    import("drizzle-orm"),
+  ]);
   const session = await auth();
   if (!session?.user || session.user.role !== "ADMIN") {
     return NextResponse.json({ success: false, error: "دسترسی غیرمجاز" }, { status: 401 });

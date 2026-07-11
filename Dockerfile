@@ -20,10 +20,12 @@ COPY . .
 ARG NEXT_PUBLIC_APP_URL
 ARG BUILD_DATABASE_URL
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
-ENV DATABASE_URL=$BUILD_DATABASE_URL
+ENV BUILD_DATABASE_URL=$BUILD_DATABASE_URL
+ENV ENV_VALIDATION_CONTEXT=build
 ENV AUTH_SECRET=build-time-placeholder-secret-that-is-never-deployed
 ENV NODE_ENV=production
 
+RUN test -n "$BUILD_DATABASE_URL" || (echo "BUILD_DATABASE_URL must be set to a non-production PostgreSQL database for next build" && exit 1)
 RUN npm run typecheck
 RUN npm run build
 
