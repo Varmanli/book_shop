@@ -29,6 +29,20 @@
       "when": 1782645926925,
       "tag": "0003_futuristic_terror",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783000000000,
+      "tag": "0005_add_owner_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783000000001,
+      "tag": "0006_owner_role_management",
+      "breakpoints": true
     }
   ]
 }

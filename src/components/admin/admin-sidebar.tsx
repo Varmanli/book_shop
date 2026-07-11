@@ -17,11 +17,11 @@ import {
   MessageSquare,
   Settings,
   Layers,
-  ChevronLeft,
   ChevronDown,
   X,
   PanelLeftClose,
   PanelLeftOpen,
+  Shield,
 } from "lucide-react";
 
 /* ─── Nav config ─────────────────────────────────────────────── */
@@ -134,9 +134,10 @@ function activeGroupId(pathname: string): string | null {
 interface SidebarContentProps {
   collapsed: boolean;
   onLinkClick?: () => void;
+  isOwner: boolean;
 }
 
-function SidebarContent({ collapsed, onLinkClick }: SidebarContentProps) {
+function SidebarContent({ collapsed, onLinkClick, isOwner }: SidebarContentProps) {
   const pathname = usePathname();
   const isActive = useIsActive(pathname);
   const currentGroupId = activeGroupId(pathname);
@@ -150,21 +151,39 @@ function SidebarContent({ collapsed, onLinkClick }: SidebarContentProps) {
 
   // Re-open active group when pathname changes (navigation)
   useEffect(() => {
-    if (currentGroupId) {
+    if (!currentGroupId) return;
+    const frame = requestAnimationFrame(() => {
       setOpenGroups((prev) => new Set(prev).add(currentGroupId));
-    }
+    });
+    return () => cancelAnimationFrame(frame);
   }, [currentGroupId]);
 
   function toggleGroup(id: string) {
     setOpenGroups((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
 
   return (
     <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+      {isOwner && (
+        <Link
+          href="/admin/users/roles"
+          onClick={onLinkClick}
+          title="مدیریت نقش مدیران"
+          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+            isActive("/admin/users/roles")
+              ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          } ${collapsed ? "justify-center px-0" : ""}`}
+        >
+          <Shield size={16} />
+          {!collapsed && <span>مدیریت نقش مدیران</span>}
+        </Link>
+      )}
       {GROUPS.map((group) => {
         const isGroupOpen = openGroups.has(group.id);
         const isSingleItem = group.items.length === 1;
@@ -287,9 +306,10 @@ function SidebarContent({ collapsed, onLinkClick }: SidebarContentProps) {
 interface Props {
   mobileOpen: boolean;
   onClose: () => void;
+  isOwner: boolean;
 }
 
-export function AdminSidebar({ mobileOpen, onClose }: Props) {
+export function AdminSidebar({ mobileOpen, onClose, isOwner }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
 
@@ -330,7 +350,7 @@ export function AdminSidebar({ mobileOpen, onClose }: Props) {
           </button>
         </div>
 
-        <SidebarContent collapsed={collapsed} />
+        <SidebarContent collapsed={collapsed} isOwner={isOwner} />
       </aside>
 
       {/* ── Mobile drawer ── */}
@@ -363,7 +383,7 @@ export function AdminSidebar({ mobileOpen, onClose }: Props) {
           </button>
         </div>
 
-        <SidebarContent collapsed={false} onLinkClick={onClose} />
+        <SidebarContent collapsed={false} onLinkClick={onClose} isOwner={isOwner} />
       </div>
     </>
   );

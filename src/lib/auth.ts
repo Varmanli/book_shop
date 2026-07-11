@@ -11,6 +11,7 @@ import {
   verificationTokens,
 } from "@/db/schema";
 import { loginSchema } from "@/validations/auth.schema";
+import { isUserRole } from "@/lib/roles";
 
 type AdapterSchema = NonNullable<
   Parameters<typeof DrizzleAdapter<typeof db>>[1]
@@ -76,16 +77,20 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user?.id) {
+      if (user?.id && isUserRole(user.role)) {
         token.id = user.id;
-        token.role = user.role ?? "USER";
+        token.role = user.role;
       }
       return token;
     },
     async session({ session, token }) {
-      if (typeof token.id === "string" && session.user) {
+      if (
+        typeof token.id === "string" &&
+        isUserRole(token.role) &&
+        session.user
+      ) {
         session.user.id = token.id;
-        session.user.role = (token.role as "USER" | "ADMIN") ?? "USER";
+        session.user.role = token.role;
       }
       return session;
     },

@@ -7,7 +7,6 @@ const { auth } = NextAuth(authConfig);
 export default auth((req) => {
   const { nextUrl } = req;
   const isLoggedIn = !!req.auth?.user?.id;
-  const role = req.auth?.user?.role;
 
   const isAdminRoute = nextUrl.pathname.startsWith("/admin");
   const isCustomerRoute =
@@ -19,7 +18,7 @@ export default auth((req) => {
     nextUrl.pathname.startsWith("/auth/register");
 
   if (isAdminRoute) {
-    if (!isLoggedIn || role !== "ADMIN") {
+    if (!isLoggedIn) {
       return NextResponse.redirect(new URL("/auth/login", nextUrl));
     }
   }

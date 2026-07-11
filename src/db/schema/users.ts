@@ -1,5 +1,4 @@
 import {
-  boolean,
   index,
   integer,
   pgEnum,
@@ -15,7 +14,7 @@ import { cartItems } from "./cart";
 import { wishlistItems } from "./wishlist";
 import { reviews } from "./reviews";
 
-export const roleEnum = pgEnum("role", ["USER", "ADMIN"]);
+export const roleEnum = pgEnum("role", ["USER", "ADMIN", "OWNER"]);
 
 export const users = pgTable(
   "users",
@@ -73,6 +72,34 @@ export const verificationTokens = pgTable(
     expires: timestamp("expires", { mode: "date" }).notNull(),
   },
   (table) => [primaryKey({ columns: [table.identifier, table.token] })]
+);
+
+export const ownerControl = pgTable("owner_control", {
+  id: integer("id").primaryKey(),
+  ownerUserId: text("owner_user_id")
+    .unique()
+    .references(() => users.id, { onDelete: "restrict" }),
+  assignedAt: timestamp("assigned_at", { mode: "date" }),
+});
+
+export const roleAuditLogs = pgTable(
+  "role_audit_logs",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    actorUserId: text("actor_user_id").references(() => users.id, {
+      onDelete: "restrict",
+    }),
+    targetUserId: text("target_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    action: text("action").notNull(),
+    previousRole: roleEnum("previous_role"),
+    newRole: roleEnum("new_role").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("role_audit_logs_target_idx").on(table.targetUserId)]
 );
 
 export const usersRelations = relations(users, ({ many }) => ({

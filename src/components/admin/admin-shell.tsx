@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminTopbar } from "./admin-topbar";
+import type { UserRole } from "@/lib/roles";
 
 interface Props {
-  user: { name: string; email: string; image?: string | null };
+  user: { name: string; email: string; image?: string | null; role: UserRole };
   children: React.ReactNode;
 }
 
@@ -22,6 +23,7 @@ export function AdminShell({ user, children }: Props) {
       <AdminSidebar
         mobileOpen={mobileOpen}
         onClose={() => setMobileOpen(false)}
+        isOwner={user.role === "OWNER"}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminTopbar

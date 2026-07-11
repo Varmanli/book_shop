@@ -9,6 +9,7 @@ async function AdminLayout({ children }: { children: React.ReactNode }) {
     name: session.user.name ?? "مدیر",
     email: session.user.email ?? "",
     image: session.user.image ?? null,
+    role: session.user.role,
   };
 
   return <AdminShell user={user}>{children}</AdminShell>;

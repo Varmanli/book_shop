@@ -1,5 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
+import { isUserRole } from "@/lib/roles";
 
 export const authConfig: NextAuthConfig = {
   // Coolify terminates TLS at its trusted reverse proxy.
@@ -17,16 +18,20 @@ export const authConfig: NextAuthConfig = {
   ],
   callbacks: {
     jwt({ token, user }) {
-      if (user?.id) {
+      if (user?.id && isUserRole(user.role)) {
         token.id = user.id;
-        token.role = (user as { role?: string }).role ?? "USER";
+        token.role = user.role;
       }
       return token;
     },
     session({ session, token }) {
-      if (typeof token.id === "string" && session.user) {
+      if (
+        typeof token.id === "string" &&
+        isUserRole(token.role) &&
+        session.user
+      ) {
         session.user.id = token.id;
-        session.user.role = (token.role as "USER" | "ADMIN") ?? "USER";
+        session.user.role = token.role;
       }
       return session;
     },
