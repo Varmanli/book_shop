@@ -3,6 +3,7 @@ import Link from "next/link";
 interface AuthCardProps {
   children: React.ReactNode;
   title: string;
+  subtitle?: string;
   footerText: string;
   footerLinkLabel: string;
   footerLinkHref: string;
@@ -11,6 +12,7 @@ interface AuthCardProps {
 export function AuthCard({
   children,
   title,
+  subtitle,
   footerText,
   footerLinkLabel,
   footerLinkHref,
@@ -231,6 +233,9 @@ export function AuthCard({
             <h1 className="text-2xl font-extrabold text-foreground sm:text-3xl">
               {title}
             </h1>
+            {subtitle && (
+              <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
+            )}
           </div>
         </div>
 
