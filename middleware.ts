@@ -25,10 +25,12 @@ export default auth((req) => {
   }
 
   if (isCustomerRoute && !isLoggedIn) {
-    const callbackUrl = encodeURIComponent(nextUrl.pathname);
-    return NextResponse.redirect(
-      new URL(`/auth/login?callbackUrl=${callbackUrl}`, nextUrl)
+    const loginUrl = new URL("/auth/login", nextUrl);
+    loginUrl.searchParams.set(
+      "callbackUrl",
+      `${nextUrl.pathname}${nextUrl.search}`
     );
+    return NextResponse.redirect(loginUrl);
   }
 
   if (isAuthRoute && isLoggedIn) {

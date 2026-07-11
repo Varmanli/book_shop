@@ -5,8 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { loginAction, signInWithGoogleAction } from "@/actions/auth.actions";
 import { PasswordInput } from "./password-input";
-import { FormError } from "./form-status";
+import { FormError, FormSuccess } from "./form-status";
 import type { ApiResponse } from "@/types/api";
+import { getSafeRedirectTo } from "@/lib/auth-utils";
 
 const initialState: ApiResponse<null> = { success: false, error: "" };
 
@@ -28,15 +29,19 @@ export function LoginForm({ googleConfigured }: Props) {
   const [state, action, pending] = useActionState(loginAction, initialState);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const requestedCallbackUrl = searchParams.get("callbackUrl");
-  const callbackUrl =
-    requestedCallbackUrl?.startsWith("/") && !requestedCallbackUrl.startsWith("//")
-      ? requestedCallbackUrl
-      : "/account";
+  const callbackUrl = getSafeRedirectTo(searchParams.get("callbackUrl"));
   const redirected = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const hasError = !state.success && !!(state as { error?: string }).error;
+  const actionError = !state.success ? state.error : null;
+  const authError = searchParams.get("error");
+  const authErrorMessage = authError
+    ? authError === "CredentialsSignin"
+      ? "ایمیل یا رمز عبور صحیح نیست"
+      : "ورود با Google انجام نشد. لطفاً دوباره تلاش کنید"
+    : null;
+  const errorMessage = pending ? null : actionError ?? authErrorMessage;
+  const hasError = !!errorMessage;
 
   /* Redirect on success */
   useEffect(() => {
@@ -67,6 +72,7 @@ export function LoginForm({ googleConfigured }: Props) {
           }
           .animate-shake { animation: shake 0.4s ease; }
         `}</style>
+        <input type="hidden" name="redirectTo" value={callbackUrl} />
 
         {/* Email */}
         <div className="space-y-1.5">
@@ -119,7 +125,14 @@ export function LoginForm({ googleConfigured }: Props) {
         </div>
 
         {/* Error message */}
-        <FormError message={hasError ? (state as { error: string }).error : null} />
+        <FormSuccess
+          message={
+            searchParams.get("registered") === "1"
+              ? "ثبت‌نام انجام شد. لطفاً وارد حساب خود شوید."
+              : null
+          }
+        />
+        <FormError message={errorMessage} />
 
         {/* Submit — shimmer gradient button */}
         <button

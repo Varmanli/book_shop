@@ -12,13 +12,21 @@ import {
 } from "@/db/schema";
 import { loginSchema } from "@/validations/auth.schema";
 
+type AdapterSchema = NonNullable<
+  Parameters<typeof DrizzleAdapter<typeof db>>[1]
+>;
+
+const adapterSchema = {
+  usersTable: users,
+  accountsTable: accounts,
+  sessionsTable: sessions,
+  verificationTokensTable: verificationTokens,
+} satisfies AdapterSchema;
+
 export const { auth, handlers, signIn, signOut } = NextAuth({
-  adapter: DrizzleAdapter(db, {
-    usersTable: users as any,
-    accountsTable: accounts as any,
-    sessionsTable: sessions as any,
-    verificationTokensTable: verificationTokens as any,
-  }),
+  // Coolify terminates TLS at its trusted reverse proxy.
+  trustHost: true,
+  adapter: DrizzleAdapter(db, adapterSchema),
   session: {
     strategy: "jwt",
   },
@@ -68,15 +76,15 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
+      if (user?.id) {
         token.id = user.id;
         token.role = user.role ?? "USER";
       }
       return token;
     },
     async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id as string;
+      if (typeof token.id === "string" && session.user) {
+        session.user.id = token.id;
         session.user.role = (token.role as "USER" | "ADMIN") ?? "USER";
       }
       return session;

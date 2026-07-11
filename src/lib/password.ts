@@ -23,5 +23,9 @@ export async function verifyPassword(
       else resolve(derivedKey.toString("hex"));
     });
   });
-  return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(derived, "hex"));
+  const expected = Buffer.from(hash, "hex");
+  const actual = Buffer.from(derived, "hex");
+  if (expected.length !== actual.length) return false;
+
+  return crypto.timingSafeEqual(expected, actual);
 }

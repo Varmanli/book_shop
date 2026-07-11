@@ -1,48 +1,79 @@
 "use server";
 
 import { signIn, signOut } from "@/lib/auth";
-import { registerUser } from "@/services/user.service";
-import { registerSchema } from "@/validations/auth.schema";
+import { DuplicateEmailError, registerUser } from "@/services/user.service";
+import { loginSchema, registerSchema } from "@/validations/auth.schema";
 import { ok, fail, type ApiResponse } from "@/types/api";
 import { AuthError } from "next-auth";
+import {
+  getAuthErrorFromResult,
+  getSafeRedirectTo,
+  normalizeEmail,
+} from "@/lib/auth-utils";
 
-function getSafeRedirectTo(value: FormDataEntryValue | null): string {
-  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) {
-    return "/account";
-  }
+const INVALID_CREDENTIALS_MESSAGE = "ایمیل یا رمز عبور صحیح نیست";
+const LOGIN_ERROR_MESSAGE = "خطا در ورود — لطفاً دوباره تلاش کنید";
+const REGISTRATION_ERROR_MESSAGE = "خطا در ثبت‌نام — لطفاً دوباره تلاش کنید";
 
-  return value;
+export type RegistrationResult = {
+  redirectTo: string;
+};
+
+function logAuthFailure(context: string, error: unknown) {
+  const type =
+    error instanceof AuthError
+      ? error.type
+      : error instanceof Error
+        ? error.name
+        : "UnknownError";
+  console.error(`${context}: ${type}`);
+}
+
+function getCredentialsErrorMessage(result: unknown): string | null {
+  const error = getAuthErrorFromResult(result);
+  if (!error) return null;
+
+  return error === "CredentialsSignin"
+    ? INVALID_CREDENTIALS_MESSAGE
+    : LOGIN_ERROR_MESSAGE;
 }
 
 export async function loginAction(
   _: unknown,
   formData: FormData
 ): Promise<ApiResponse<null>> {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  const parsed = loginSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
 
-  if (!email || !password) {
-    return fail("ایمیل و رمز عبور الزامی هستند");
+  if (!parsed.success) {
+    return fail(parsed.error.flatten().fieldErrors.email?.[0] ?? parsed.error.flatten().fieldErrors.password?.[0] ?? "اطلاعات ورود نامعتبر است");
   }
 
   try {
-    await signIn("credentials", {
-      email,
-      password,
+    const result = await signIn("credentials", {
+      email: normalizeEmail(parsed.data.email),
+      password: parsed.data.password,
       redirect: false,
+      redirectTo: getSafeRedirectTo(formData.get("redirectTo")),
     });
+    const errorMessage = getCredentialsErrorMessage(result);
+    if (errorMessage) return fail(errorMessage);
+
     return ok(null);
   } catch (error) {
     if (error instanceof AuthError) {
-      switch (error.type) {
-        case "CredentialsSignin":
-          return fail("ایمیل یا رمز عبور نادرست است");
-        default:
-          return fail("خطا در ورود — لطفاً دوباره تلاش کنید");
+      if (error.type === "CredentialsSignin") {
+        return fail(INVALID_CREDENTIALS_MESSAGE);
       }
+
+      logAuthFailure("Credentials sign-in failed", error);
+      return fail(LOGIN_ERROR_MESSAGE);
     }
-    // next/navigation redirect throws — let it propagate
-    throw error;
+
+    logAuthFailure("Credentials sign-in failed", error);
+    return fail(LOGIN_ERROR_MESSAGE);
   }
 }
 
@@ -55,7 +86,7 @@ export async function signInWithGoogleAction(formData: FormData) {
 export async function registerAction(
   _: unknown,
   formData: FormData
-): Promise<ApiResponse<null>> {
+): Promise<ApiResponse<RegistrationResult>> {
   const raw = {
     name: formData.get("name") as string,
     email: formData.get("email") as string,
@@ -78,25 +109,32 @@ export async function registerAction(
   try {
     await registerUser(parsed.data);
   } catch (error) {
-    if (error instanceof Error) {
-      return fail(error.message);
+    if (error instanceof DuplicateEmailError) {
+      return fail("این ایمیل قبلاً ثبت شده است", {
+        email: ["این ایمیل قبلاً ثبت شده است"],
+      });
     }
-    return fail("خطا در ثبت‌نام — لطفاً دوباره تلاش کنید");
+
+    logAuthFailure("User registration failed", error);
+    return fail(REGISTRATION_ERROR_MESSAGE);
   }
 
   // Auto-login after successful registration
   try {
-    await signIn("credentials", {
+    const result = await signIn("credentials", {
       email: parsed.data.email,
       password: parsed.data.password,
       redirect: false,
+      redirectTo: "/account",
     });
-  } catch {
-    // signIn may throw redirect — let it propagate; silently ignore auth errors
-    // so user at least gets a success message and can log in manually
+    if (!getAuthErrorFromResult(result)) {
+      return ok({ redirectTo: "/account" });
+    }
+  } catch (error) {
+    logAuthFailure("Automatic sign-in after registration failed", error);
   }
 
-  return ok(null);
+  return ok({ redirectTo: "/auth/login?registered=1" });
 }
 
 export async function logoutAction() {

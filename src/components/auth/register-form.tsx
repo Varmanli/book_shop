@@ -6,8 +6,9 @@ import { registerAction } from "@/actions/auth.actions";
 import { PasswordInput } from "./password-input";
 import { FormError, FormSuccess } from "./form-status";
 import type { ApiResponse } from "@/types/api";
+import type { RegistrationResult } from "@/actions/auth.actions";
 
-const initialState: ApiResponse<null> = { success: false, error: "" };
+const initialState: ApiResponse<RegistrationResult> = { success: false, error: "" };
 
 function UserIcon() {
   return (
@@ -44,10 +45,10 @@ export function RegisterForm() {
   useEffect(() => {
     if (state.success && !redirected.current) {
       redirected.current = true;
-      router.push("/account");
+      router.push(state.data.redirectTo);
       router.refresh();
     }
-  }, [state.success, router]);
+  }, [state, router]);
 
   const fieldErrors =
     !state.success && (state as { fieldErrors?: Record<string, string[]> }).fieldErrors
