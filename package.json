@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
+    "db:baseline:pre-owner": "node scripts/baseline-pre-owner.mjs",
     "db:push": "drizzle-kit push --force",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts"

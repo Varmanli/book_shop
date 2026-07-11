@@ -13,6 +13,7 @@ const journal = JSON.parse(
   fs.readFileSync(path.join(migrationsFolder, "meta", "_journal.json"), "utf8")
 );
 const sql = postgres(databaseUrl, { max: 1 });
+const dryRun = process.env.MIGRATION_DRY_RUN === "1";
 
 function migrationErrorDetails(error) {
   if (!error || typeof error !== "object") return String(error);
@@ -47,6 +48,7 @@ try {
   );
 
   let previousMigrationAt = 0;
+  const pendingEntries = [];
 
   for (const entry of journal.entries) {
     if (entry.when <= previousMigrationAt) {
@@ -54,27 +56,38 @@ try {
     }
     previousMigrationAt = entry.when;
     if (entry.when <= lastAppliedAt) continue;
+    pendingEntries.push(entry);
+  }
 
-    const migrationPath = path.join(migrationsFolder, `${entry.tag}.sql`);
-    const contents = fs.readFileSync(migrationPath, "utf8");
-    const hash = crypto.createHash("sha256").update(contents).digest("hex");
+  if (dryRun) {
+    console.log(
+      pendingEntries.length
+        ? `Pending migrations: ${pendingEntries.map((entry) => entry.tag).join(", ")}`
+        : "No pending migrations."
+    );
+  } else {
+    for (const entry of pendingEntries) {
+      const migrationPath = path.join(migrationsFolder, `${entry.tag}.sql`);
+      const contents = fs.readFileSync(migrationPath, "utf8");
+      const hash = crypto.createHash("sha256").update(contents).digest("hex");
 
-    const statements = contents
-      .split("--> statement-breakpoint")
-      .map((statement) => statement.trim())
-      .filter(Boolean);
+      const statements = contents
+        .split("--> statement-breakpoint")
+        .map((statement) => statement.trim())
+        .filter(Boolean);
 
-    console.log(`Applying migration ${entry.tag}...`);
-    await sql.begin(async (transaction) => {
-      for (const statement of statements) {
-        await transaction.unsafe(statement);
-      }
-      await transaction.unsafe(
-        'INSERT INTO "drizzle"."__drizzle_migrations" (hash, created_at) VALUES ($1, $2)',
-        [hash, entry.when]
-      );
-    });
-    console.log(`Applied migration ${entry.tag}.`);
+      console.log(`Applying migration ${entry.tag}...`);
+      await sql.begin(async (transaction) => {
+        for (const statement of statements) {
+          await transaction.unsafe(statement);
+        }
+        await transaction.unsafe(
+          'INSERT INTO "drizzle"."__drizzle_migrations" (hash, created_at) VALUES ($1, $2)',
+          [hash, entry.when]
+        );
+      });
+      console.log(`Applied migration ${entry.tag}.`);
+    }
   }
 } catch (error) {
   console.error("Migration failed:");
