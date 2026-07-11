@@ -3,9 +3,12 @@
 # Production Dockerfile for book_shop / used-books
 # Next.js standalone output + Coolify Dockerfile deployment
 #
-# Build-time variables:
+# Required build-time variables:
 #   NEXT_PUBLIC_APP_URL
 #   BUILD_DATABASE_URL
+#
+# BUILD_DATABASE_URL must point to the PostgreSQL database that should receive
+# the reviewed migrations. It must be writable.
 #
 # Runtime variables:
 #   DATABASE_URL
@@ -15,9 +18,6 @@
 #   S3_*
 #   UPLOADTHING_TOKEN
 #   OWNER_SETUP_TOKEN
-#
-# Coolify pre-deployment command:
-#   node scripts/migrate.mjs
 
 
 # ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 
 # ---------------------------------------------------------------------------
-# Development/build dependencies
+# Full dependencies for typecheck, migrations, and Next.js build
 # ---------------------------------------------------------------------------
 
 FROM base AS deps
@@ -45,10 +45,8 @@ RUN npm ci
 # ---------------------------------------------------------------------------
 # Production dependencies
 #
-# The Next.js standalone output contains traced application dependencies,
-# but scripts/migrate.mjs is outside the Next.js dependency graph.
-# Keeping production dependencies here ensures the migration runner can load
-# packages such as the PostgreSQL driver in the final image.
+# Required because scripts/migrate.mjs runs outside Next.js standalone tracing
+# and may need packages such as the PostgreSQL driver.
 # ---------------------------------------------------------------------------
 
 FROM base AS prod-deps
@@ -70,28 +68,39 @@ COPY . .
 ARG NEXT_PUBLIC_APP_URL
 ARG BUILD_DATABASE_URL
 
-# NEXT_PUBLIC_* values are intentionally embedded into the client bundle.
 ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
-
-# Explicitly mark environment validation as build-time validation.
 ENV ENV_VALIDATION_CONTEXT=build
 ENV NODE_ENV=production
 
-# Fail immediately with an understandable error when Coolify has not exposed
-# BUILD_DATABASE_URL as a build-time variable.
+# Fail before typecheck/build when Coolify has not passed the database URL as
+# an available-at-build-time variable.
 RUN test -n "${BUILD_DATABASE_URL}" || \
     (echo >&2 "ERROR: BUILD_DATABASE_URL is required during Docker build."; \
-     echo >&2 "Configure it in Coolify as a build-time variable."; \
-     echo >&2 "It must point to a non-production, read-only/sanitized PostgreSQL database."; \
+     echo >&2 "Configure it in Coolify and enable Available at Buildtime."; \
+     echo >&2 "It must be a writable PostgreSQL connection string."; \
      exit 1)
+
+# Confirm that the supplied value has a PostgreSQL URL shape without printing
+# the secret itself.
+RUN case "${BUILD_DATABASE_URL}" in \
+      postgres://*|postgresql://*) ;; \
+      *) \
+        echo >&2 "ERROR: BUILD_DATABASE_URL must be a PostgreSQL connection string."; \
+        exit 1 ;; \
+    esac
 
 RUN npm run typecheck
 
-# DATABASE_URL is provided only to this command because application modules
-# loaded by `next build` currently require database access while prerendering.
+# Apply reviewed migrations before building the application.
 #
-# AUTH_SECRET is a build-only placeholder. It exists only in this intermediate
-# builder layer and is not copied into the runtime image.
+# The custom runner commits each journaled migration separately. This is
+# required for migrations where a PostgreSQL enum value is introduced in one
+# migration and used by a following migration.
+RUN DATABASE_URL="${BUILD_DATABASE_URL}" \
+    NODE_ENV=production \
+    node scripts/migrate.mjs
+
+# Build using the same migrated database.
 RUN DATABASE_URL="${BUILD_DATABASE_URL}" \
     BUILD_DATABASE_URL="${BUILD_DATABASE_URL}" \
     ENV_VALIDATION_CONTEXT=build \
@@ -100,7 +109,7 @@ RUN DATABASE_URL="${BUILD_DATABASE_URL}" \
 
 
 # ---------------------------------------------------------------------------
-# Runtime
+# Runtime image
 # ---------------------------------------------------------------------------
 
 FROM base AS runner
@@ -113,22 +122,19 @@ ENV HOSTNAME=0.0.0.0
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 --ingroup nodejs nextjs
 
-# Production dependencies are needed by the standalone server and by the
-# custom migration runner executed through Coolify's pre-deployment command.
+# Keep runtime dependencies available for the standalone server and optional
+# manual migration diagnostics.
 COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 
-# Static/public assets
+# Public and static assets
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-
-# Next.js standalone server
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Reviewed database migrations and custom migration runner
+# Keep migrations and the runner in the final image for diagnostics or manual
+# recovery, even though normal migrations now run during image build.
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrate.mjs ./scripts/migrate.mjs
-
-# Package metadata can help runtime tooling and diagnostics.
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 
 USER nextjs
