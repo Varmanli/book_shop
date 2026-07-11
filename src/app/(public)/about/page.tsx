@@ -3,6 +3,7 @@ import Image from "next/image";
 import { getAllTeamMembers } from "@/repositories/team.repository";
 import { getSetting } from "@/repositories/settings.repository";
 import type { AboutContent } from "@/actions/site-content.actions";
+import Link from "next/link";
 
 const DEFAULTS = {
   heroTitle: "درباره کتابخانه",
@@ -38,7 +39,7 @@ export default async function AboutPage() {
   return (
     <main className="min-h-screen bg-background">
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-bl from-primary/5 via-background to-primary/10 py-24 px-4">
+      <section className="relative overflow-hidden bg-linear-to-bl from-primary/5 via-background to-primary/10 py-24 px-4">
         <div className="absolute inset-0 -z-10">
           <div className="absolute top-0 right-1/4 h-72 w-72 rounded-full bg-primary/5 blur-3xl" />
           <div className="absolute bottom-0 left-1/4 h-96 w-96 rounded-full bg-primary/5 blur-3xl" />
@@ -190,7 +191,7 @@ export default async function AboutPage() {
                       className="object-cover transition-transform duration-500 group-hover:scale-105"
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-linear-to-t from-card/80 via-transparent to-transparent" />
                   </div>
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-foreground">
@@ -220,12 +221,12 @@ export default async function AboutPage() {
             هزاران کتاب دست دوم با کیفیت در انتظار شماست.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <a
+            <Link
               href="/books"
               className="inline-flex items-center rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
             >
               مشاهده همه کتاب‌ها
-            </a>
+            </Link>
             <a
               href="/contact"
               className="inline-flex items-center rounded-xl border border-border bg-background px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
