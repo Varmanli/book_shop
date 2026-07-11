@@ -36,16 +36,28 @@ try {
     )
   `);
 
-  const applied = await sql.unsafe(
-    'SELECT hash FROM "drizzle"."__drizzle_migrations"'
+  const [lastAppliedMigration] = await sql.unsafe(
+    'SELECT hash, created_at FROM "drizzle"."__drizzle_migrations" ORDER BY created_at DESC LIMIT 1'
   );
-  const appliedHashes = new Set(applied.map((migration) => migration.hash));
+  const lastAppliedAt = Number(lastAppliedMigration?.created_at ?? 0);
+  console.log(
+    lastAppliedMigration
+      ? `Migration history ends at ${lastAppliedMigration.created_at}.`
+      : "No applied migrations found."
+  );
+
+  let previousMigrationAt = 0;
 
   for (const entry of journal.entries) {
+    if (entry.when <= previousMigrationAt) {
+      throw new Error("Migration journal entries must be ordered by increasing timestamp.");
+    }
+    previousMigrationAt = entry.when;
+    if (entry.when <= lastAppliedAt) continue;
+
     const migrationPath = path.join(migrationsFolder, `${entry.tag}.sql`);
     const contents = fs.readFileSync(migrationPath, "utf8");
     const hash = crypto.createHash("sha256").update(contents).digest("hex");
-    if (appliedHashes.has(hash)) continue;
 
     const statements = contents
       .split("--> statement-breakpoint")
