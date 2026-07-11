@@ -2,6 +2,19 @@ import { z } from "zod";
 
 const qualityGrades = ["Like New", "Very Good", "Good", "Acceptable"] as const;
 
+function optionalNullableInteger(
+  min: number,
+  max?: number,
+) {
+  return z.preprocess((value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === "string" && value.trim() === "") return null;
+    return value;
+  }, max === undefined
+    ? z.coerce.number().int().min(min).nullable().optional()
+    : z.coerce.number().int().min(min).max(max).nullable().optional());
+}
+
 export const createBookSchema = z.object({
   title: z.string().min(1, "عنوان کتاب الزامی است"),
   slug: z.string().min(1).optional(),
@@ -34,8 +47,8 @@ export const createBookSchema = z.object({
         .nonnegative("قیمت نمی‌تواند منفی باشد")
     ),
   images: z.array(z.string()).default([]),
-  publishedYear: z.coerce.number().int().min(1000).max(2100).optional().nullable(),
-  pageCount: z.coerce.number().int().min(1).optional().nullable(),
+  publishedYear: optionalNullableInteger(1000, 2100),
+  pageCount: optionalNullableInteger(1),
   language: z.string().default("Persian"),
   isFeatured: z.boolean().default(false),
   isPublished: z.boolean().default(true),

@@ -4,8 +4,15 @@ import { signIn, signOut } from "@/lib/auth";
 import { registerUser } from "@/services/user.service";
 import { registerSchema } from "@/validations/auth.schema";
 import { ok, fail, type ApiResponse } from "@/types/api";
-import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
+
+function getSafeRedirectTo(value: FormDataEntryValue | null): string {
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) {
+    return "/account";
+  }
+
+  return value;
+}
 
 export async function loginAction(
   _: unknown,
@@ -37,6 +44,12 @@ export async function loginAction(
     // next/navigation redirect throws — let it propagate
     throw error;
   }
+}
+
+export async function signInWithGoogleAction(formData: FormData) {
+  await signIn("google", {
+    redirectTo: getSafeRedirectTo(formData.get("redirectTo")),
+  });
 }
 
 export async function registerAction(
@@ -87,6 +100,5 @@ export async function registerAction(
 }
 
 export async function logoutAction() {
-  await signOut({ redirect: false });
-  redirect("/auth/login");
+  await signOut({ redirectTo: "/auth/login" });
 }

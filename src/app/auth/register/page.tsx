@@ -8,7 +8,6 @@ export default function RegisterPage() {
   return (
     <AuthCard
       title="ایجاد حساب جدید"
-      subtitle="همین حالا عضو شوید و از تخفیف‌های ویژه بهره‌مند شوید"
       footerText="قبلاً ثبت‌نام کرده‌اید؟"
       footerLinkLabel="وارد شوید"
       footerLinkHref="/auth/login"

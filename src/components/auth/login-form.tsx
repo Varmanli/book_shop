@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { loginAction } from "@/actions/auth.actions";
+import { loginAction, signInWithGoogleAction } from "@/actions/auth.actions";
 import { PasswordInput } from "./password-input";
 import { FormError } from "./form-status";
 import type { ApiResponse } from "@/types/api";
@@ -28,7 +28,11 @@ export function LoginForm({ googleConfigured }: Props) {
   const [state, action, pending] = useActionState(loginAction, initialState);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/account";
+  const requestedCallbackUrl = searchParams.get("callbackUrl");
+  const callbackUrl =
+    requestedCallbackUrl?.startsWith("/") && !requestedCallbackUrl.startsWith("//")
+      ? requestedCallbackUrl
+      : "/account";
   const redirected = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -38,7 +42,7 @@ export function LoginForm({ googleConfigured }: Props) {
   useEffect(() => {
     if (state.success && !redirected.current) {
       redirected.current = true;
-      router.push(decodeURIComponent(callbackUrl));
+      router.push(callbackUrl);
       router.refresh();
     }
   }, [state.success, callbackUrl, router]);
@@ -53,20 +57,19 @@ export function LoginForm({ googleConfigured }: Props) {
   }, [hasError, state]);
 
   return (
-    <form ref={formRef} action={action} className="space-y-5" noValidate>
-      <style>{`
-        @keyframes shake {
-          0%,100%{transform:translateX(0)}
-          20%,60%{transform:translateX(-5px)}
-          40%,80%{transform:translateX(5px)}
-        }
-        .animate-shake { animation: shake 0.4s ease; }
-      `}</style>
+    <div className="space-y-5">
+      <form ref={formRef} action={action} className="space-y-5" noValidate>
+        <style>{`
+          @keyframes shake {
+            0%,100%{transform:translateX(0)}
+            20%,60%{transform:translateX(-5px)}
+            40%,80%{transform:translateX(5px)}
+          }
+          .animate-shake { animation: shake 0.4s ease; }
+        `}</style>
 
-      <input type="hidden" name="callbackUrl" value={callbackUrl} />
-
-      {/* Email */}
-      <div className="space-y-1.5">
+        {/* Email */}
+        <div className="space-y-1.5">
         <label htmlFor="email" className="block text-sm font-semibold text-foreground">
           ایمیل <span className="text-destructive">*</span>
         </label>
@@ -85,20 +88,20 @@ export function LoginForm({ googleConfigured }: Props) {
             <MailIcon />
           </span>
         </div>
-      </div>
+        </div>
 
-      {/* Password */}
-      <PasswordInput
+        {/* Password */}
+        <PasswordInput
         name="password"
         id="password"
         label="رمز عبور"
         autoComplete="current-password"
         required
         placeholder="رمز عبور خود را وارد کنید"
-      />
+        />
 
-      {/* Remember me + forgot */}
-      <div className="flex items-center justify-between">
+        {/* Remember me + forgot */}
+        <div className="flex items-center justify-between">
         <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground select-none">
           <input
             type="checkbox"
@@ -113,17 +116,17 @@ export function LoginForm({ googleConfigured }: Props) {
         >
           فراموشی رمز؟
         </Link>
-      </div>
+        </div>
 
-      {/* Error message */}
-      <FormError message={hasError ? (state as { error: string }).error : null} />
+        {/* Error message */}
+        <FormError message={hasError ? (state as { error: string }).error : null} />
 
-      {/* Submit — shimmer gradient button */}
-      <button
+        {/* Submit — shimmer gradient button */}
+        <button
         type="submit"
         disabled={pending}
         className="btn-shimmer relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/30 transition-all hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:[animation:none]"
-      >
+        >
         {state.success ? (
           <>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
@@ -144,7 +147,8 @@ export function LoginForm({ googleConfigured }: Props) {
             ورود به حساب
           </>
         )}
-      </button>
+        </button>
+      </form>
 
       {/* Google */}
       {googleConfigured && (
@@ -154,8 +158,8 @@ export function LoginForm({ googleConfigured }: Props) {
             <span className="text-xs text-muted-foreground">یا ورود با</span>
             <div className="flex-1 border-t border-border" />
           </div>
-          <form action="/api/auth/signin/google" method="post">
-            <input type="hidden" name="callbackUrl" value={callbackUrl} />
+          <form action={signInWithGoogleAction}>
+            <input type="hidden" name="redirectTo" value={callbackUrl} />
             <button
               type="submit"
               className="flex w-full items-center justify-center gap-3 rounded-xl border-2 border-border bg-card px-5 py-3 text-sm font-semibold text-foreground shadow-sm transition hover:border-primary/30 hover:bg-muted hover:shadow-md"
@@ -171,6 +175,6 @@ export function LoginForm({ googleConfigured }: Props) {
           </form>
         </>
       )}
-    </form>
+    </div>
   );
 }

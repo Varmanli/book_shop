@@ -16,6 +16,7 @@ import {
 import { SearchBar } from "@/components/search/search-bar";
 import { MiniCart } from "@/components/cart/mini-cart";
 import { useCart } from "@/components/cart/cart-context";
+import { logoutAction } from "@/actions/auth.actions";
 
 const NAV_LINKS = [
   { href: "/", label: "صفحه اصلی" },
@@ -57,7 +58,7 @@ function UserMenu({ isLoggedIn, isAdmin, userName }: UserMenuProps) {
           href="/auth/register"
           className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90"
         >
-          ثبت‌نامbg-linear-to-br
+          ثبت نام
         </Link>
       </div>
     );
@@ -126,7 +127,7 @@ function UserMenu({ isLoggedIn, isAdmin, userName }: UserMenuProps) {
 
             <div className="my-1 border-t border-border" />
 
-            <form action="/api/auth/signout" method="post">
+            <form action={logoutAction}>
               <button
                 type="submit"
                 className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-500 transition hover:bg-red-500/10"
@@ -280,7 +281,11 @@ export function HeaderClient({
             aria-label={menuOpen ? "بستن منو" : "باز کردن منو"}
             aria-expanded={menuOpen}
           >
-            {menuOpen ? <X size={20} aria-hidden /> : <Menu size={20} aria-hidden />}
+            {menuOpen ? (
+              <X size={20} aria-hidden />
+            ) : (
+              <Menu size={20} aria-hidden />
+            )}
           </button>
         </div>
       </div>
