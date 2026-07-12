@@ -56,11 +56,104 @@ cp .env.example .env
 
 ## 3. Run database migrations
 
-Creates all tables (safe to re-run on updates):
+Run this once before each release, using the same `DATABASE_URL` that the app
+will use at runtime. It is the only supported migration command:
 
 ```bash
 npm run db:migrate
 ```
+
+Do not run `db:push` in production. It bypasses the reviewed migration
+journal.
+
+## Docker / Coolify deployment
+
+The Docker build never connects to PostgreSQL and requires no database
+credentials. Set `NEXT_PUBLIC_APP_URL` as the only optional build argument.
+
+Configure `DATABASE_URL`, `AUTH_SECRET`, and all other secrets as **runtime**
+variables in Coolify. Set the Coolify **pre-deployment command** to:
+
+```bash
+npm run db:migrate
+```
+
+Coolify must run that command once per release, before starting or replacing
+application containers. Do not put the migration command in the Dockerfile
+`RUN` steps or the container `CMD`; that can migrate the wrong database or let
+multiple application replicas race to migrate.
+
+### One-time recovery for the current production database
+
+The reported `type "role" already exists` error means the production schema
+already contains the pre-Owner migrations, but its Drizzle history is empty.
+Do **not** drop the enum, tables, or production data. Instead, first take a
+database backup and verify that the database is the pre-Owner schema (the
+`role` enum contains only `USER` and `ADMIN`, and `owner_control` does not
+exist). Then run this once through `psql` against that production database:
+
+```sql
+BEGIN;
+
+CREATE SCHEMA IF NOT EXISTS "drizzle";
+CREATE TABLE IF NOT EXISTS "drizzle"."__drizzle_migrations" (
+  id SERIAL PRIMARY KEY,
+  hash text NOT NULL,
+  created_at bigint
+);
+
+-- Safety guards: this recovery is only for the known, pre-Owner schema with
+-- an empty migration history.
+DO $$
+DECLARE
+  role_values text[];
+BEGIN
+  IF EXISTS (SELECT 1 FROM "drizzle"."__drizzle_migrations") THEN
+    RAISE EXCEPTION 'Drizzle migration history is not empty; aborting recovery.';
+  END IF;
+
+  SELECT array_agg(enumlabel ORDER BY enumsortorder)
+  INTO role_values
+  FROM pg_enum
+  WHERE enumtypid = 'public.role'::regtype;
+
+  IF role_values IS DISTINCT FROM ARRAY['USER', 'ADMIN'] THEN
+    RAISE EXCEPTION 'Expected the pre-Owner public.role enum; aborting recovery.';
+  END IF;
+
+  IF to_regclass('public.owner_control') IS NOT NULL
+     OR to_regclass('public.role_audit_logs') IS NOT NULL
+     OR to_regclass('public.users') IS NULL
+     OR to_regclass('public.books') IS NULL
+     OR to_regclass('public.genres') IS NULL
+     OR to_regclass('public.reviews') IS NULL
+     OR to_regclass('public.coupons') IS NULL
+     OR to_regclass('public.transactions') IS NULL
+     OR NOT EXISTS (
+       SELECT 1 FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'books' AND column_name = 'is_sold'
+     )
+     OR NOT EXISTS (
+       SELECT 1 FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'genres' AND column_name = 'image'
+     ) THEN
+    RAISE EXCEPTION 'Database does not match the expected pre-Owner schema; aborting recovery.';
+  END IF;
+END $$;
+
+INSERT INTO "drizzle"."__drizzle_migrations" (hash, created_at) VALUES
+  ('d614f0a93b263f3a9666067e3bac3f0305ead4e2b14240e81accdbe72db0ee13', 1780951720886),
+  ('ec36c713636a415ac7f5f07424f8926df916620c26ff79f14691e91012e5687c', 1781018102677),
+  ('5987fdb8ed01186859fdc75b401758eee97ee65a6749e511e02b2bac05fe75c6', 1782599883087),
+  ('738ba59fb2c1c1c880fbbad617f864d1509bc3d31800dc70b95b64fad40cdb49', 1782645926925);
+
+COMMIT;
+```
+
+Immediately run `npm run db:migrate`. Drizzle will then apply only
+`0005_add_owner_role` and `0006_owner_role_management`. This repair is
+deliberately a documented, one-time operator action—not an automatic fallback
+in the application or image.
 
 ---
 

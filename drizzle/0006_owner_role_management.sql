@@ -8,10 +8,11 @@ INSERT INTO "owner_control" ("id", "owner_user_id", "assigned_at")
 VALUES (1, NULL, NULL)
 ON CONFLICT ("id") DO NOTHING;
 --> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS "users_single_owner_idx"
-ON "public"."users" (("role"))
-WHERE "role" = 'OWNER';
---> statement-breakpoint
+-- The guarded update of this single row in assignInitialOwner is the database
+-- concurrency guard for the one-owner invariant. Do not add a partial index
+-- using the new OWNER enum value here: Drizzle runs pending migrations in one
+-- transaction, while PostgreSQL makes a newly added enum value usable only
+-- after that transaction commits.
 CREATE TABLE IF NOT EXISTS "role_audit_logs" (
   "id" text PRIMARY KEY,
   "actor_user_id" text REFERENCES "public"."users"("id") ON DELETE RESTRICT,

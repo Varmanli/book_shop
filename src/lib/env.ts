@@ -32,11 +32,7 @@ const clientSchema = z.object({
 });
 
 function validateEnv() {
-  const validationEnvironment =
-    process.env.ENV_VALIDATION_CONTEXT === "build"
-      ? { ...process.env, DATABASE_URL: process.env.BUILD_DATABASE_URL }
-      : process.env;
-  const serverResult = serverSchema.safeParse(validationEnvironment);
+  const serverResult = serverSchema.safeParse(process.env);
   const clientResult = clientSchema.safeParse(process.env);
 
   if (!serverResult.success) {
