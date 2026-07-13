@@ -72,17 +72,19 @@ The Docker build never connects to PostgreSQL and requires no database
 credentials. Set `NEXT_PUBLIC_APP_URL` as the only optional build argument.
 
 Configure `DATABASE_URL`, `AUTH_SECRET`, and all other secrets as **runtime**
-variables in Coolify. Do not configure a Coolify pre-deployment migration
-command: the image starts through `scripts/start-production.sh`, which runs:
+variables in Coolify. Container startup is always `node server.js`; it never
+runs a migration. Deploy the image normally, then open a Coolify terminal for
+the newly running application container and run:
 
 ```bash
 npm run db:migrate
 ```
 
-before executing `node server.js`. A migration failure exits the container, so
-Coolify cannot route traffic to an application that has not been migrated.
-This startup flow is the single production migration path; it keeps the build
-database-free and avoids relying on an optional Coolify UI command.
+This is the single production migration command. It uses the container's
+runtime `DATABASE_URL`, writes PostgreSQL/Drizzle errors directly to that
+terminal, and a failure affects only the command—not the running application.
+Do not configure it as a Docker `CMD`, entrypoint, image-build step, or a
+Coolify automatic pre-deployment command.
 
 ### One-time recovery for the current production database
 
@@ -155,6 +157,20 @@ Immediately run `npm run db:migrate`. Drizzle will then apply only
 `0005_add_owner_role` and `0006_owner_role_management`. This repair is
 deliberately a documented, one-time operator action—not an automatic fallback
 in the application or image.
+
+Before the final migration command, confirm the four baseline rows are the
+only history rows:
+
+```sql
+SELECT created_at
+FROM "drizzle"."__drizzle_migrations"
+ORDER BY created_at;
+```
+
+The result must be exactly `1780951720886`, `1781018102677`,
+`1782599883087`, and `1782645926925`. Drizzle Kit has no migration dry-run
+flag; this guarded history check is the safe verification that its next run
+will select only the two Owner migrations.
 
 ---
 
