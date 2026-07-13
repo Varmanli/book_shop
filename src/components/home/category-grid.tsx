@@ -4,7 +4,6 @@ import Link from "next/link";
 interface CategoryMeta {
   icon: string;
   seed: string;
-  gradient: string;
   accentColor: string;
 }
 
@@ -12,61 +11,51 @@ const CATEGORY_META: Record<string, CategoryMeta> = {
   fiction: {
     icon: "📖",
     seed: "fiction-books",
-    gradient: "from-violet-900/15 via-purple-800/20 to-transparent",
     accentColor: "bg-violet-500",
   },
   "non-fiction": {
     icon: "🔬",
     seed: "science-library",
-    gradient: "from-sky-900/15 via-blue-800/20 to-transparent",
     accentColor: "bg-sky-500",
   },
   mystery: {
     icon: "🔍",
     seed: "mystery-dark",
-    gradient: "from-gray-900/15 via-slate-800/20 to-transparent",
     accentColor: "bg-slate-500",
   },
   "sci-fi": {
     icon: "🚀",
     seed: "space-galaxy",
-    gradient: "from-cyan-900/15 via-teal-800/20 to-transparent",
     accentColor: "bg-cyan-500",
   },
   romance: {
     icon: "❤️",
     seed: "romance-flowers",
-    gradient: "from-rose-900/15 via-pink-800/20 to-transparent",
     accentColor: "bg-rose-500",
   },
   biography: {
     icon: "👤",
     seed: "biography-portrait",
-    gradient: "from-amber-900/15 via-orange-800/20 to-transparent",
     accentColor: "bg-amber-500",
   },
   history: {
     icon: "🏛️",
     seed: "ancient-history",
-    gradient: "from-stone-900/15 via-stone-700/20 to-transparent",
     accentColor: "bg-stone-500",
   },
   poetry: {
     icon: "🌸",
     seed: "poetry-nature",
-    gradient: "from-fuchsia-900/15 via-pink-800/20 to-transparent",
     accentColor: "bg-fuchsia-500",
   },
   children: {
     icon: "🧒",
     seed: "children-colorful",
-    gradient: "from-green-900/15 via-emerald-800/20 to-transparent",
     accentColor: "bg-green-500",
   },
   philosophy: {
     icon: "💭",
     seed: "philosophy-mind",
-    gradient: "from-indigo-900/15 via-blue-900/20 to-transparent",
     accentColor: "bg-indigo-500",
   },
 };
@@ -74,7 +63,6 @@ const CATEGORY_META: Record<string, CategoryMeta> = {
 const DEFAULT_META: CategoryMeta = {
   icon: "📚",
   seed: "bookshelf-warm",
-  gradient: "from-primary/85 via-primary/50 to-transparent",
   accentColor: "bg-primary",
 };
 
@@ -185,10 +173,9 @@ function CategoryCard({ category, meta, image, index }: CardProps) {
         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
       />
 
-      {/* Gradient overlay — always dark at bottom, darker on hover */}
-      <div
-        className={`absolute inset-0 bg-linear-to-t ${meta.gradient} transition-opacity duration-300 group-hover:opacity-95`}
-      />
+      {/* Neutral, bottom-only scrim for readable text. It deliberately avoids
+          the theme's amber primary color so uploaded images stay true. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-linear-to-t from-black/55 via-black/10 to-transparent" />
 
       {/* Top-right icon badge */}
       <div className="absolute right-4 top-3 flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 text-xl shadow-sm backdrop-blur-sm transition-transform duration-300 group-hover:scale-110">
