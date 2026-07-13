@@ -22,7 +22,16 @@ export async function requireAuth() {
 
 export async function requireAdmin() {
   const session = await requireAuth();
-  if (!isAdminRole(session.user.role)) {
+  const allowed = isAdminRole(session.user.role);
+  if (process.env.AUTH_DEBUG_ADMIN_ACCESS === "true") {
+    console.info("[auth] admin access", {
+      userId: session.user.id,
+      email: session.user.email,
+      role: session.user.role,
+      allowed,
+    });
+  }
+  if (!allowed) {
     redirect("/");
   }
   return session;
@@ -42,5 +51,5 @@ export async function getCurrentUserId(): Promise<string | null> {
 }
 
 export function isAdmin(role?: string | null): boolean {
-  return role === "ADMIN" || role === "OWNER";
+  return isAdminRole(role);
 }

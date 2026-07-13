@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAdminRole } from "@/lib/roles";
 
 export async function GET(req: NextRequest) {
   const [{ auth }, { db }, { books }, { ilike, or, eq, and }] = await Promise.all([
@@ -8,7 +9,7 @@ export async function GET(req: NextRequest) {
     import("drizzle-orm"),
   ]);
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user || !isAdminRole(session.user.role)) {
     return NextResponse.json({ success: false, error: "دسترسی غیرمجاز" }, { status: 401 });
   }
 

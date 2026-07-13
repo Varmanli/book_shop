@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { storageService } from "@/services/storage.service";
 import { auth } from "@/lib/auth";
+import { isAdminRole } from "@/lib/roles";
 import sharp from "sharp";
 
 export type UploadContext = "book" | "blog" | "logo" | "avatar" | "page" | "general" | "category" | "genre" | "hero";
@@ -44,7 +45,7 @@ const CONTEXT_FOLDERS: Record<UploadContext, string> = {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || !isAdminRole(session.user.role)) {
       return NextResponse.json({ success: false, error: "دسترسی غیرمجاز" }, { status: 401 });
     }
 

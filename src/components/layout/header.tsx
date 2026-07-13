@@ -3,11 +3,12 @@ import { findCartItems } from "@/repositories/cart.repository";
 import { cookies } from "next/headers";
 import { HeaderClient } from "./header-client";
 import { CART_SESSION_COOKIE } from "@/config/cart";
+import { isAdminRole } from "@/lib/roles";
 
 export async function Header() {
   const session = await auth();
   const isLoggedIn = !!session?.user;
-  const isAdmin = session?.user?.role === "ADMIN";
+  const isAdmin = isAdminRole(session?.user?.role);
   const userName = session?.user?.name;
 
   let cartCount = 0;

@@ -1,6 +1,7 @@
 import { createUploadthing } from "uploadthing/next";
 import type { FileRouter } from "uploadthing/next";
 import { auth } from "@/lib/auth";
+import { isAdminRole } from "@/lib/roles";
 
 const f = createUploadthing();
 
@@ -10,7 +11,7 @@ export const ourFileRouter = {
   })
     .middleware(async () => {
       const session = await auth();
-      if (!session?.user || session.user.role !== "ADMIN") {
+      if (!session?.user || !isAdminRole(session.user.role)) {
         throw new Error("Unauthorized: admin access required");
       }
       return { userId: session.user.id };
@@ -24,7 +25,7 @@ export const ourFileRouter = {
   })
     .middleware(async () => {
       const session = await auth();
-      if (!session?.user || session.user.role !== "ADMIN") {
+      if (!session?.user || !isAdminRole(session.user.role)) {
         throw new Error("Unauthorized: admin access required");
       }
       return { userId: session.user.id };
@@ -38,7 +39,7 @@ export const ourFileRouter = {
   })
     .middleware(async () => {
       const session = await auth();
-      if (!session?.user || session.user.role !== "ADMIN") {
+      if (!session?.user || !isAdminRole(session.user.role)) {
         throw new Error("Unauthorized: admin access required");
       }
       return { userId: session.user.id };

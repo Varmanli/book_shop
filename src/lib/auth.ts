@@ -84,13 +84,16 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      if (
-        typeof token.id === "string" &&
-        isUserRole(token.role) &&
-        session.user
-      ) {
+      if (typeof token.id === "string" && session.user) {
         session.user.id = token.id;
-        session.user.role = token.role;
+        // A JWT can outlive a role change. Read the authoritative role for
+        // server-side sessions so promoted OWNER users do not keep stale
+        // USER/ADMIN permissions until they sign in again.
+        const user = await db.query.users.findFirst({
+          where: eq(users.id, token.id),
+          columns: { role: true },
+        });
+        session.user.role = user?.role ?? (isUserRole(token.role) ? token.role : "USER");
       }
       return session;
     },

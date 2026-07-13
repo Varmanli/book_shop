@@ -25,13 +25,11 @@ export const authConfig: NextAuthConfig = {
       return token;
     },
     session({ session, token }) {
-      if (
-        typeof token.id === "string" &&
-        isUserRole(token.role) &&
-        session.user
-      ) {
+      if (typeof token.id === "string" && session.user) {
         session.user.id = token.id;
-        session.user.role = token.role;
+        // Middleware must stay edge-safe, so it uses the JWT value. The full
+        // server auth callback refreshes this role from PostgreSQL.
+        session.user.role = isUserRole(token.role) ? token.role : "USER";
       }
       return session;
     },
