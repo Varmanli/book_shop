@@ -72,16 +72,17 @@ The Docker build never connects to PostgreSQL and requires no database
 credentials. Set `NEXT_PUBLIC_APP_URL` as the only optional build argument.
 
 Configure `DATABASE_URL`, `AUTH_SECRET`, and all other secrets as **runtime**
-variables in Coolify. Set the Coolify **pre-deployment command** to:
+variables in Coolify. Do not configure a Coolify pre-deployment migration
+command: the image starts through `scripts/start-production.sh`, which runs:
 
 ```bash
 npm run db:migrate
 ```
 
-Coolify must run that command once per release, before starting or replacing
-application containers. Do not put the migration command in the Dockerfile
-`RUN` steps or the container `CMD`; that can migrate the wrong database or let
-multiple application replicas race to migrate.
+before executing `node server.js`. A migration failure exits the container, so
+Coolify cannot route traffic to an application that has not been migrated.
+This startup flow is the single production migration path; it keeps the build
+database-free and avoids relying on an optional Coolify UI command.
 
 ### One-time recovery for the current production database
 

@@ -3,8 +3,8 @@
 # Production Dockerfile for book_shop / used-books.
 #
 # The image build is intentionally database-free. Configure DATABASE_URL and
-# the other secrets only as runtime variables. Run `npm run db:migrate` once
-# as the platform's pre-deployment command before releasing this image.
+# the other secrets only as runtime variables. At container startup, the
+# startup script runs the standard Drizzle migration command before the app.
 
 
 # ---------------------------------------------------------------------------
@@ -30,8 +30,8 @@ RUN npm ci
 
 
 # ---------------------------------------------------------------------------
-# Production dependencies, including Drizzle Kit for the platform's
-# pre-deployment migration command.
+# Production dependencies, including Drizzle Kit for the startup migration
+# command.
 # ---------------------------------------------------------------------------
 
 FROM base AS prod-deps
@@ -73,7 +73,7 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 --ingroup nodejs nextjs
 
 # Keep runtime dependencies available for the standalone server and the
-# standard Drizzle pre-deployment command.
+# standard Drizzle startup migration command.
 COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Public and static assets
@@ -81,14 +81,17 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Keep the migration journal and its standard Drizzle configuration in the
-# final image. The platform runs `npm run db:migrate` before deployment.
+# Keep the migration journal, configuration, and startup script in the final
+# image. The script runs `npm run db:migrate` before starting Next.js.
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/start-production.sh ./scripts/start-production.sh
+
+RUN chmod 755 ./scripts/start-production.sh
 
 USER nextjs
 
 EXPOSE 3006
 
-CMD ["node", "server.js"]
+CMD ["./scripts/start-production.sh"]
